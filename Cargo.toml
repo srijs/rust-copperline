@@ -1,10 +1,11 @@
 [package]
 name = "copperline"
-version = "0.0.1"
+version = "0.0.2"
 authors = ["Sam Rijs <srijs@airpost.net>"]
 description = "Pure-Rust Command Line Editing Library"
 license = "MIT"
 repository = "https://github.com/srijs/rust-copperline"
+documentation = "https://srijs.github.io/rust-copperline/copperline/struct.Copperline.html"
 keywords = ["readline", "linenoise", "command", "line", "editing"]
 
 [dependencies]
