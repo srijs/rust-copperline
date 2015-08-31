@@ -36,6 +36,7 @@ fn readline_edit(term: &mut Term, prompt: &str) -> Result<String, Error> {
                     instr::Instr::HistoryPrev            => (),
                     instr::Instr::HistoryNext            => (),
                     instr::Instr::Noop                   => (),
+                    instr::Instr::Cancel                 => return Err(Error::EndOfFile),
                     instr::Instr::InsertStringAtCursor   => try!(buffer.insert_string_at_cursor(&seq))
                 };
                 seq.clear();

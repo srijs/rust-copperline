@@ -10,6 +10,7 @@ pub enum Instr {
     HistoryNext,
     HistoryPrev,
     Done,
+    Cancel,
     Noop
 }
 
@@ -31,6 +32,8 @@ pub fn interpret_token(token: parser::Token) -> Instr {
         parser::Token::CtrlE       => Instr::MoveCursorEnd,
         parser::Token::EscBracketF => Instr::MoveCursorEnd,
         parser::Token::Text        => Instr::InsertStringAtCursor,
+        parser::Token::CtrlC       => Instr::Cancel,
+        parser::Token::CtrlD       => Instr::Cancel,
         _                          => Instr::Noop
     }
 }
