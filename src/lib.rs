@@ -1,7 +1,7 @@
 extern crate libc;
 extern crate nix;
 
-pub mod error;
+mod error;
 mod buffer;
 mod history;
 mod parser;
@@ -10,7 +10,7 @@ mod term;
 
 use std::os::unix::io::RawFd;
 
-use error::Error;
+pub use error::Error;
 use history::History;
 use buffer::Buffer;
 use term::Term;
@@ -77,7 +77,7 @@ impl Copperline {
         }
     }
 
-    pub fn readline(&mut self, prompt: &str) -> Result<String, Error> {
+    pub fn read_line(&mut self, prompt: &str) -> Result<String, Error> {
         if Term::is_unsupported_term() || !self.term.is_a_tty() {
             return Err(Error::UnsupportedTerm);
         }
@@ -88,8 +88,24 @@ impl Copperline {
         result
     }
 
-    pub fn history_add(&mut self, line: String) {
+    pub fn get_current_history_length(&self) -> usize {
+        self.history.len()
+    }
+
+    pub fn add_history(&mut self, line: String) {
         self.history.push(line)
+    }
+
+    pub fn get_history_item(&self, idx: usize) -> Option<&String> {
+        self.history.get(idx)
+    }
+
+    pub fn remove_history_item(&mut self, idx: usize) -> Option<String> {
+        self.history.remove(idx)
+    }
+
+    pub fn clear_history(&mut self) {
+        self.history.clear()
     }
 
 }

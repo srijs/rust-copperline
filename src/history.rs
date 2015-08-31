@@ -77,4 +77,12 @@ impl History {
         }
     }
 
+    pub fn remove(&mut self, idx: usize) -> Option<String> {
+        self.deque.remove(idx)
+    }
+
+    pub fn clear(&mut self) {
+        self.deque.clear()
+    }
+
 }
