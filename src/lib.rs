@@ -15,7 +15,7 @@ use history::History;
 use buffer::Buffer;
 use term::Term;
 
-fn readline_edit(term: &mut Term, history: &mut History, prompt: &str) -> Result<String, Error> {
+fn readline_edit(term: &mut Term, history: &History, prompt: &str) -> Result<String, Error> {
     let mut buffer = Buffer::new();
     let mut seq: Vec<u8> = Vec::new();
     let mut history_cursor = history::Cursor::new(history);
@@ -82,7 +82,7 @@ impl Copperline {
             return Err(Error::UnsupportedTerm);
         }
         try!(self.term.enable_raw_mode());
-        let result = readline_edit(&mut self.term, &mut self.history, prompt);
+        let result = readline_edit(&mut self.term, &self.history, prompt);
         try!(self.term.disable_raw_mode());
         println!("");
         result
