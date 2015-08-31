@@ -45,7 +45,7 @@ impl Term {
         unsafe { libc::isatty(self.in_fd) != 0 && libc::isatty(self.out_fd) != 0 }
     }
 
-    fn enable_raw_mode(&mut self) -> Result<(), Error> {
+    pub fn enable_raw_mode(&mut self) -> Result<(), Error> {
 
         if !self.is_a_tty() {
             return Err(Error::from(nix::Error::from_errno(Errno::ENOTTY)));
@@ -73,21 +73,12 @@ impl Term {
 
     }
 
-    fn disable_raw_mode(&mut self) -> Result<(), Error> {
+    pub fn disable_raw_mode(&mut self) -> Result<(), Error> {
         let original_termios = self.original_termios.take();
         if original_termios.is_some() {
             try!(termios::tcsetattr(self.out_fd, termios::TCSAFLUSH, &original_termios.unwrap()));
         }
         Ok(())
-    }
-
-    pub fn with_raw_mode<A, F>(&mut self, f: F) -> Result<A, Error>
-        where F: FnOnce(&mut Term) -> Result<A, Error> {
-        try!(self.enable_raw_mode());
-        let result = f(self);
-        try!(self.disable_raw_mode());
-        println!("");
-        result
     }
 
     pub fn read_byte(&mut self) -> Result<Option<u8>, nix::Error> {

@@ -6,7 +6,7 @@ pub enum Instr {
     MoveCursorStart,
     MoveCursorEnd,
     DeleteCharLeftOfCursor,
-    InsertStringAtCursor,
+    InsertAtCursor,
     HistoryNext,
     HistoryPrev,
     Done,
@@ -31,7 +31,7 @@ pub fn interpret_token(token: parser::Token) -> Instr {
         parser::Token::EscBracketH => Instr::MoveCursorStart,
         parser::Token::CtrlE       => Instr::MoveCursorEnd,
         parser::Token::EscBracketF => Instr::MoveCursorEnd,
-        parser::Token::Text        => Instr::InsertStringAtCursor,
+        parser::Token::Text        => Instr::InsertAtCursor,
         parser::Token::CtrlC       => Instr::Cancel,
         parser::Token::CtrlD       => Instr::Cancel,
         _                          => Instr::Noop
