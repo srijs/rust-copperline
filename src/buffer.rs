@@ -35,9 +35,16 @@ impl Buffer {
         self.pos = s.len();
     }
 
+    pub fn insert_char_at_cursor(&mut self, c: char) {
+        let len = c.len_utf8();
+        self.front_buf.insert(self.pos, c);
+        self.pos += len;
+    }
+
     pub fn insert_string_at_cursor(&mut self, s: &str) {
-        self.front_buf.push_str(s);
-        self.pos += s.len();
+        for c in s.chars() {
+            self.insert_char_at_cursor(c);
+        }
     }
 
     pub fn insert_bytes_at_cursor(&mut self, s: &[u8]) -> Result<(), Error> {
