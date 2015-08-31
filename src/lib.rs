@@ -38,20 +38,16 @@ fn readline_edit(term: &mut Term, history: &mut History, prompt: &str) -> Result
                     instr::Instr::MoveCursorStart        => buffer.move_start(),
                     instr::Instr::MoveCursorEnd          => buffer.move_end(),
                     instr::Instr::HistoryPrev            => {
-                        if history_cursor.is_void() {
-                            buffer.swap();
+                        if history_cursor.incr() {
+                            buffer.swap()
                         }
-                        history_cursor = history_cursor.incr();
                         history_cursor.get().map(|s| buffer.replace(s));
                     },
                     instr::Instr::HistoryNext            => {
-                        if !history_cursor.is_void() {
-                            history_cursor = history_cursor.decr();
-                            history_cursor.get().map(|s| buffer.replace(s));
-                            if history_cursor.is_void() {
-                                buffer.swap();
-                            }
+                        if history_cursor.decr() {
+                            buffer.swap()
                         }
+                        history_cursor.get().map(|s| buffer.replace(s));
                     },
                     instr::Instr::Noop                   => (),
                     instr::Instr::Cancel                 => return Err(Error::EndOfFile),

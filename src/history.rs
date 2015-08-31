@@ -16,27 +16,25 @@ impl<'a> Cursor<'a> {
         self.cur.is_none()
     }
 
-    pub fn incr(&mut self) -> Cursor<'a> {
-        Cursor {
-            history: self.history,
-            cur: match self.cur {
-                Some(i) if i + 1 < self.history.len() => Some(i + 1),
-                Some(i) => Some(i),
-                None if self.history.len() > 0 => Some(0),
-                None => None
-            }
-        }
+    pub fn incr(&mut self) -> bool {
+        let mut flag = false;
+        self.cur = match self.cur {
+            Some(i) if i + 1 < self.history.len() => Some(i + 1),
+            Some(i) => Some(i),
+            None if self.history.len() > 0 => {flag = true; Some(0)},
+            None => None
+        };
+        flag
     }
 
-    pub fn decr(&mut self) -> Cursor<'a> {
-        Cursor {
-            history: self.history,
-            cur: match self.cur {
-                Some(i) if i > 0 => Some(i - 1),
-                Some(_) => None,
-                None => None
-            }
-        }
+    pub fn decr(&mut self) -> bool {
+        let mut flag = false;
+        self.cur = match self.cur {
+            Some(i) if i > 0 => Some(i - 1),
+            Some(_) => {flag = true; None},
+            None => None
+        };
+        flag
     }
 
     pub fn get(&self) -> Option<&'a String> {
