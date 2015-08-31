@@ -8,7 +8,7 @@ mod parser;
 mod instr;
 mod term;
 
-use std::os::unix::io::RawFd;
+use std::os::unix::io::{RawFd, AsRawFd};
 
 pub use error::Error;
 use history::History;
@@ -67,10 +67,14 @@ pub struct Copperline {
 impl Copperline {
 
     pub fn new() -> Copperline {
-        Copperline::from_raw_fd(libc::STDIN_FILENO, libc::STDOUT_FILENO)
+        Copperline::new_from_raw_fds(libc::STDIN_FILENO, libc::STDOUT_FILENO)
     }
 
-    fn from_raw_fd(ifd: RawFd, ofd: RawFd) -> Copperline {
+    pub fn new_from_io<I: AsRawFd, O: AsRawFd>(i: &I, o: &O) -> Copperline {
+        Copperline::new_from_raw_fds(i.as_raw_fd(), o.as_raw_fd())
+    }
+
+    pub fn new_from_raw_fds(ifd: RawFd, ofd: RawFd) -> Copperline {
         Copperline {
             term: Term::new(ifd, ofd),
             history: History::new()
