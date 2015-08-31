@@ -4,8 +4,8 @@ use copperline::Copperline;
 
 fn main() {
     let mut cl = Copperline::new();
-    while let Ok(line) = cl.readline(">> ") {
+    while let Ok(line) = cl.read_line(">> ") {
         println!("Line: {}", line);
-        cl.history_add(line);
+        cl.add_history(line);
     }
 }
