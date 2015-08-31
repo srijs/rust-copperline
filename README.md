@@ -1,2 +1,0 @@
-# rust-copperline
-rust-copperline
