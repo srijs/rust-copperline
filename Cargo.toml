@@ -2,6 +2,9 @@
 name = "copperline"
 version = "0.0.1"
 authors = ["Sam Rijs <srijs@airpost.net>"]
+description = "Pure-Rust Line Editing Library"
+license = "MIT"
+repository = "https://github.com/srijs/rust-copperline"
 
 [dependencies]
 libc = "0.1.8"
