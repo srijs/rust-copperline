@@ -45,21 +45,39 @@
             <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
                 [<span class='inner'>&#x2212;</span>]
             </a>
-        </span><a id='src-0' class='srclink' href='../src/copperline/lib.rs.html#1-75' title='goto source code'>[src]</a></span></h1>
-<h2 id='modules' class='section-header'><a href="#modules">Modules</a></h2>
-<table>
-                    <tr class=' module-item'>
-                        <td><a class='mod' href='error/index.html'
-                               title='copperline::error'>error</a></td>
-                        <td class='docblock short'>
-                             
-                        </td>
-                    </tr>
-                </table><h2 id='structs' class='section-header'><a href="#structs">Structs</a></h2>
+        </span><a id='src-0' class='srclink' href='../src/copperline/lib.rs.html#1-140' title='goto source code'>[src]</a></span></h1>
+<div class='docblock'>
+<h1 id="a-low-level-terminal-line-editing-library" class='section-header'><a
+                           href="#a-low-level-terminal-line-editing-library">A low-level terminal line editing library</a></h1>
+<p>Copperline is a line editing library written from scratch in Rust,
+born from the authors frustration with the interface of existing
+bindings to C-libraries like readline, libedit or linenoise.</p>
+
+<p>Features that are currently supported:</p>
+
+<ul>
+<li>Cursor movement and text insertion</li>
+<li>Jumps (via <code>C-a</code> and <code>C-e</code>)</li>
+<li>History browsing (via <code>C-p</code> and <code>C-n</code>)</li>
+</ul>
+
+<p>It has a clean, hackable codebase, which I hope will foster
+contributions so that the Rust ecosystem will soon be able to utilise
+a mature, pure-Rust line editing library.</p>
+</div><h2 id='structs' class='section-header'><a href="#structs">Structs</a></h2>
 <table>
                     <tr class=' module-item'>
                         <td><a class='struct' href='struct.Copperline.html'
                                title='copperline::Copperline'>Copperline</a></td>
+                        <td class='docblock short'>
+                             
+                        </td>
+                    </tr>
+                </table><h2 id='enums' class='section-header'><a href="#enums">Enums</a></h2>
+<table>
+                    <tr class=' module-item'>
+                        <td><a class='enum' href='enum.Error.html'
+                               title='copperline::Error'>Error</a></td>
                         <td class='docblock short'>
                              
                         </td>
