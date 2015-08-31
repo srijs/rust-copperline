@@ -12,10 +12,6 @@ impl<'a> Cursor<'a> {
         Cursor { history: h, cur: None }
     }
 
-    pub fn is_void(&self) -> bool {
-        self.cur.is_none()
-    }
-
     pub fn incr(&mut self) -> bool {
         let mut flag = false;
         self.cur = match self.cur {
