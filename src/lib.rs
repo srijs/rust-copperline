@@ -1,3 +1,19 @@
+//! # A low-level terminal line editing library
+//!
+//! Copperline is a line editing library written from scratch in Rust,
+//! born from the authors frustration with the interface of existing
+//! bindings to C-libraries like readline, libedit or linenoise.
+//!
+//! Features that are currently supported:
+//!
+//! - Cursor movement and text insertion
+//! - Jumps (via `C-a` and `C-e`)
+//! - History browsing (via `C-p` and `C-n`)
+//!
+//! It has a clean, hackable codebase, which I hope will foster
+//! contributions so that the Rust ecosystem will soon be able to utilise
+//! a mature, pure-Rust line editing library.
+
 extern crate libc;
 extern crate nix;
 
@@ -66,14 +82,17 @@ pub struct Copperline {
 
 impl Copperline {
 
+    /// Constructs a new Copperline from stdin to stdout.
     pub fn new() -> Copperline {
         Copperline::new_from_raw_fds(libc::STDIN_FILENO, libc::STDOUT_FILENO)
     }
 
+    /// Constructs a new Copperline from the specified resources.
     pub fn new_from_io<I: AsRawFd, O: AsRawFd>(i: &I, o: &O) -> Copperline {
         Copperline::new_from_raw_fds(i.as_raw_fd(), o.as_raw_fd())
     }
 
+    /// Constructs a new Copperline from the specified file descriptors.
     pub fn new_from_raw_fds(ifd: RawFd, ofd: RawFd) -> Copperline {
         Copperline {
             term: Term::new(ifd, ofd),
@@ -81,6 +100,7 @@ impl Copperline {
         }
     }
 
+    /// Reads a line from the input using the specified prompt.
     pub fn read_line(&mut self, prompt: &str) -> Result<String, Error> {
         if Term::is_unsupported_term() || !self.term.is_a_tty() {
             return Err(Error::UnsupportedTerm);
@@ -92,22 +112,27 @@ impl Copperline {
         result
     }
 
+    /// Returns the current length of the history.
     pub fn get_current_history_length(&self) -> usize {
         self.history.len()
     }
 
+    /// Adds a line to the history.
     pub fn add_history(&mut self, line: String) {
         self.history.push(line)
     }
 
+    /// Retrieves a line from the history by index.
     pub fn get_history_item(&self, idx: usize) -> Option<&String> {
         self.history.get(idx)
     }
 
+    /// Removes an item from the history by index and returns it.
     pub fn remove_history_item(&mut self, idx: usize) -> Option<String> {
         self.history.remove(idx)
     }
 
+    /// Clears the current history.
     pub fn clear_history(&mut self) {
         self.history.clear()
     }
