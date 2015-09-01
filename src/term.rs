@@ -70,9 +70,7 @@ impl Term {
 
     pub fn is_unsupported_term() -> bool {
         match std::env::var("TERM") {
-            Ok(term) => {
-                UNSUPPORTED_TERM.iter().find(|x| &&term == x).is_some()
-            }
+            Ok(term) => UNSUPPORTED_TERM.iter().any(|x| &&term == x),
             Err(_) => false
         }
     }
