@@ -29,14 +29,14 @@ use std::os::unix::io::{RawFd, AsRawFd};
 pub use error::Error;
 use history::History;
 use buffer::Buffer;
-use term::Term;
+use term::{Term, RawMode};
 
-fn readline_edit(term: &mut Term, history: &History, prompt: &str) -> Result<String, Error> {
+fn readline_edit(term: &mut Term, raw: &mut RawMode, history: &History, prompt: &str) -> Result<String, Error> {
     let mut buffer = Buffer::new();
     let mut seq: Vec<u8> = Vec::new();
     let mut history_cursor = history::Cursor::new(history);
     loop {
-        try!(term.write(&buffer.get_line(prompt)));
+        try!(raw.write(&buffer.get_line(prompt)));
         let byte = try!(try!(term.read_byte()).ok_or(Error::EndOfFile));
         seq.push(byte);
 
@@ -105,9 +105,9 @@ impl Copperline {
         if Term::is_unsupported_term() || !self.term.is_a_tty() {
             return Err(Error::UnsupportedTerm);
         }
-        try!(self.term.enable_raw_mode());
-        let result = readline_edit(&mut self.term, &self.history, prompt);
-        try!(self.term.disable_raw_mode());
+        let result = self.term.acquire_raw_mode().and_then(|mut raw| {
+            readline_edit(&mut self.term, &mut raw, &self.history, prompt)
+        });
         println!("");
         result
     }
