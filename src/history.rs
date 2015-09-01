@@ -59,7 +59,7 @@ impl History {
     }
 
     pub fn push(&mut self, s: String) {
-        if s.len() > 0 && self.deque.front() != Option::Some(&s) {
+        if !s.is_empty() && self.deque.front() != Option::Some(&s) {
             self.deque.push_front(s)
         }
     }
