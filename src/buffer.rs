@@ -4,8 +4,8 @@ use std::mem::swap;
 use error::Error;
 
 pub struct Buffer {
-    front_buf: String,
-    back_buf: String,
+    front_buf: Vec<u8>,
+    back_buf: Vec<u8>,
     pos: usize
 }
 
@@ -13,8 +13,8 @@ impl Buffer {
 
     pub fn new() -> Buffer {
         Buffer {
-            front_buf: String::new(),
-            back_buf: String::new(),
+            front_buf: Vec::new(),
+            back_buf: Vec::new(),
             pos: 0
         }
     }
@@ -29,31 +29,24 @@ impl Buffer {
         self.pos = 0;
     }
 
-    pub fn replace(&mut self, s: &str) {
+    pub fn replace(&mut self, s: &[u8]) {
         self.front_buf.clear();
-        self.front_buf.push_str(s);
+        self.front_buf.extend(s);
         self.pos = s.len();
     }
 
-    pub fn insert_char_at_cursor(&mut self, c: char) {
-        let len = c.len_utf8();
+    pub fn insert_byte_at_cursor(&mut self, c: u8) {
         self.front_buf.insert(self.pos, c);
-        self.pos += len;
+        self.pos += 1;
     }
 
-    pub fn insert_string_at_cursor(&mut self, s: &str) {
-        for c in s.chars() {
-            self.insert_char_at_cursor(c);
+    pub fn insert_bytes_at_cursor(&mut self, cs: &[u8]) {
+        for c in cs {
+            self.insert_byte_at_cursor(c.clone());
         }
     }
 
-    pub fn insert_bytes_at_cursor(&mut self, s: &[u8]) -> Result<(), Error> {
-        let c = try!(str::from_utf8(s).map_err(|_| Error::InvalidUTF8));
-        self.insert_string_at_cursor(c);
-        Ok(())
-    }
-
-    pub fn delete_char_left_of_cursor(&mut self) {
+    pub fn delete_byte_left_of_cursor(&mut self) {
         if self.pos > 0 {
             self.front_buf.remove(self.pos-1);
             self.pos -= 1;
@@ -81,17 +74,17 @@ impl Buffer {
     }
 
     pub fn get_line(&self, prompt: &str) -> Vec<u8> {
-        let mut seq = String::new();
-        seq.push('\r');
-        seq.push_str(prompt);
-        seq.push_str(&self.front_buf);
-        seq.push_str("\x1b[0K");
-        seq.push_str(&format!("\r\x1b[{}C", prompt.len() + self.pos));
-        seq.into_bytes()
+        let mut seq = Vec::new();
+        seq.extend("\r".as_bytes());
+        seq.extend(prompt.as_bytes());
+        seq.extend(&self.front_buf);
+        seq.extend("\x1b[0K".as_bytes());
+        seq.extend(&format!("\r\x1b[{}C", prompt.len() + self.pos).into_bytes());
+        seq
     }
 
-    pub fn to_string(self) -> String {
-        self.front_buf
+    pub fn to_string(self) -> Result<String, Error> {
+        String::from_utf8(self.front_buf).map_err(|_| Error::InvalidUTF8)
     }
 
 }

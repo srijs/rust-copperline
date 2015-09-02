@@ -46,9 +46,9 @@ fn readline_edit(term: &mut Term, raw: &mut RawMode, history: &History, prompt: 
             parser::Result::Success(token) => {
                 match instr::interpret_token(token) {
                     instr::Instr::Done                   => {
-                        return Ok(buffer.to_string());
+                        return buffer.to_string();
                     },
-                    instr::Instr::DeleteCharLeftOfCursor => buffer.delete_char_left_of_cursor(),
+                    instr::Instr::DeleteCharLeftOfCursor => buffer.delete_byte_left_of_cursor(),
                     instr::Instr::MoveCursorLeft         => buffer.move_left(),
                     instr::Instr::MoveCursorRight        => buffer.move_right(),
                     instr::Instr::MoveCursorStart        => buffer.move_start(),
@@ -57,17 +57,17 @@ fn readline_edit(term: &mut Term, raw: &mut RawMode, history: &History, prompt: 
                         if history_cursor.incr() {
                             buffer.swap()
                         }
-                        history_cursor.get().map(|s| buffer.replace(s));
+                        history_cursor.get().map(|s| buffer.replace(s.as_bytes()));
                     },
                     instr::Instr::HistoryNext            => {
                         if history_cursor.decr() {
                             buffer.swap()
                         }
-                        history_cursor.get().map(|s| buffer.replace(s));
+                        history_cursor.get().map(|s| buffer.replace(s.as_bytes()));
                     },
                     instr::Instr::Noop                   => (),
                     instr::Instr::Cancel                 => return Err(Error::EndOfFile),
-                    instr::Instr::InsertAtCursor         => try!(buffer.insert_bytes_at_cursor(&seq))
+                    instr::Instr::InsertAtCursor         => buffer.insert_bytes_at_cursor(&seq)
                 };
                 seq.clear();
             }
