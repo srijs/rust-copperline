@@ -49,6 +49,11 @@ fn readline_edit(term: &mut Term, raw: &mut RawMode, history: &History, prompt: 
                         return buffer.to_string();
                     },
                     instr::Instr::DeleteCharLeftOfCursor => buffer.delete_byte_left_of_cursor(),
+                    instr::Instr::DeleteCharRightOfCursor => {
+                        if !buffer.delete_byte_right_of_cursor() {
+                            return Err(Error::EndOfFile);
+                        }
+                    },
                     instr::Instr::MoveCursorLeft         => buffer.move_left(),
                     instr::Instr::MoveCursorRight        => buffer.move_right(),
                     instr::Instr::MoveCursorStart        => buffer.move_start(),

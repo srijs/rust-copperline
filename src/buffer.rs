@@ -53,6 +53,15 @@ impl Buffer {
         }
     }
 
+    pub fn delete_byte_right_of_cursor(&mut self) -> bool {
+        if self.pos < self.front_buf.len() {
+            self.front_buf.remove(self.pos);
+            return true;
+        } else {
+            return false;
+        }
+    }
+
     pub fn move_left(&mut self) {
         if self.pos > 0 {
             self.pos -= 1;
