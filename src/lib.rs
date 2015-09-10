@@ -72,6 +72,9 @@ fn readline_edit(term: &mut Term, raw: &mut RawMode, history: &History, prompt: 
                     },
                     instr::Instr::Noop                   => (),
                     instr::Instr::Cancel                 => return Err(Error::EndOfFile),
+                    instr::Instr::Clear                  => {
+                        let _ = raw.write(b"\x1b[H\x1b[2J");
+                    },
                     instr::Instr::InsertAtCursor         => buffer.insert_bytes_at_cursor(&seq)
                 };
                 seq.clear();
@@ -140,6 +143,15 @@ impl Copperline {
     /// Clears the current history.
     pub fn clear_history(&mut self) {
         self.history.clear()
+    }
+
+
+    /// Clears the screen
+    pub fn clear_screen(&mut self) -> Result<usize, Error> {
+        match self.term.acquire_raw_mode() {
+            Ok(mut raw) => raw.write(b"\x1b[H\x1b[2J").map_err(|e| Error::ErrNo(e)),
+            Err(e) => Err(e)
+        }
     }
 
 }
