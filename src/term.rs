@@ -43,6 +43,10 @@ impl RawMode {
         write(self.fd, bytes)
     }
 
+    pub fn clear(&mut self) -> Result<(), nix::Error> {
+        self.write(b"\x1b[H\x1b[2J").map(|_| ())
+    }
+
 }
 
 impl Drop for RawMode {
