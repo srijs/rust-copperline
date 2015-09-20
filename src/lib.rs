@@ -41,8 +41,8 @@ fn readline_edit(term: &mut Term, raw: &mut RawMode, history: &History, prompt: 
         seq.push(byte);
 
         match parser::parse(&seq) {
-            parser::Result::Error => return Err(Error::InvalidUTF8),
-            parser::Result::Incomplete => continue,
+            parser::Result::Error => seq.clear(),
+            parser::Result::Incomplete => (),
             parser::Result::Success(token) => {
                 match instr::interpret_token(token) {
                     instr::Instr::Done                   => {

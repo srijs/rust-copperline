@@ -78,11 +78,19 @@ fn match_head(i: &u8) -> Option<Token> {
         26  => Some(Token::CtrlZ),
         27  => Some(Token::Esc),
         127 => Some(Token::Backspace),
-        _   => None
+        _   => {
+            if *i >= 32 && *i < 127 {
+                Some(Token::Text)
+            } else if *i > 127 {
+                Some(Token::Text)
+            } else {
+                None
+            }
+        }
     }
 }
 
-fn parse_esc_bracket(vec: &Vec<u8>) -> Result {
+fn parse_esc_bracket(vec: &[u8]) -> Result {
     match vec.get(2) {
         None => Result::Incomplete,
         Some(i) => {
@@ -117,7 +125,7 @@ fn parse_esc_bracket(vec: &Vec<u8>) -> Result {
     }
 }
 
-fn parse_esc(vec: &Vec<u8>) -> Result {
+fn parse_esc(vec: &[u8]) -> Result {
     match vec.get(1) {
         None => Result::Incomplete,
         Some(i) => {
@@ -133,13 +141,13 @@ fn parse_esc(vec: &Vec<u8>) -> Result {
     }
 }
 
-pub fn parse(vec: &Vec<u8>) -> Result {
+pub fn parse(vec: &[u8]) -> Result {
     match vec.get(0) {
         None => Result::Incomplete,
         Some(i) => match match_head(i) {
             Some(Token::Esc) => parse_esc(vec),
             Some(t) => Result::Success(t),
-            None => Result::Success(Token::Text)
+            None => Result::Error
         }
     }
 }
