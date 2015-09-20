@@ -8,7 +8,7 @@ pub enum Instr {
     DeleteCharLeftOfCursor,
     DeleteCharRightOfCursor,
     DeleteCharRightOfCursorOrEOF,
-    InsertAtCursor,
+    InsertAtCursor(String),
     HistoryNext,
     HistoryPrev,
     Done,
@@ -36,7 +36,7 @@ pub fn interpret_token(token: parser::Token) -> Instr {
         parser::Token::EscBracketH  => Instr::MoveCursorStart,
         parser::Token::CtrlE        => Instr::MoveCursorEnd,
         parser::Token::EscBracketF  => Instr::MoveCursorEnd,
-        parser::Token::Text         => Instr::InsertAtCursor,
+        parser::Token::Text(text)   => Instr::InsertAtCursor(text),
         parser::Token::CtrlC        => Instr::Cancel,
         parser::Token::CtrlL        => Instr::Clear,
         _                           => Instr::Noop

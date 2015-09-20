@@ -11,3 +11,6 @@ keywords = ["readline", "linenoise", "command", "line", "editing"]
 [dependencies]
 libc = "0.1.10"
 nix = "0.4.0"
+unicode-width = "0.1.3"
+encoding = "0.2.32"
+strcursor = "0.1.0"

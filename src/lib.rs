@@ -16,6 +16,9 @@
 
 extern crate libc;
 extern crate nix;
+extern crate unicode_width;
+extern crate encoding;
+extern crate strcursor;
 
 mod error;
 mod buffer;
@@ -26,61 +29,80 @@ mod term;
 
 use std::os::unix::io::{RawFd, AsRawFd};
 
+use encoding::types::Encoding;
+use encoding::all::UTF_8;
+
 pub use error::Error;
 use history::History;
 use buffer::Buffer;
 use term::{Term, RawMode};
 
-fn readline_edit(term: &mut Term, raw: &mut RawMode, history: &History, prompt: &str) -> Result<String, Error> {
+struct EditCtx<'a, E: 'a> {
+    term: &'a mut Term,
+    raw: &'a mut RawMode,
+    history: &'a History,
+    prompt: &'a str,
+    enc: &'a E
+}
+
+fn edit<'a, E: Encoding>(ctx: EditCtx<'a, E>) -> Result<String, Error> {
     let mut buffer = Buffer::new();
     let mut seq: Vec<u8> = Vec::new();
-    let mut history_cursor = history::Cursor::new(history);
+    let mut history_cursor = history::Cursor::new(ctx.history);
     loop {
-        try!(raw.write(&buffer.get_line(prompt)));
-        let byte = try!(try!(term.read_byte()).ok_or(Error::EndOfFile));
+        try!(ctx.raw.write(&buffer.get_line(ctx.prompt)));
+        let byte = try!(try!(ctx.term.read_byte()).ok_or(Error::EndOfFile));
         seq.push(byte);
 
-        match parser::parse(&seq) {
+        match parser::parse(&seq, ctx.enc) {
             parser::Result::Error => seq.clear(),
             parser::Result::Incomplete => (),
-            parser::Result::Success(token) => {
+            parser::Result::Success(token, len) => {
                 match instr::interpret_token(token) {
                     instr::Instr::Done                   => {
-                        return buffer.to_string();
+                        return Result::Ok(buffer.to_string());
                     },
                     instr::Instr::DeleteCharLeftOfCursor => {
-                        buffer.delete_byte_left_of_cursor();
+                        buffer.delete_char_left_of_cursor();
                     },
                     instr::Instr::DeleteCharRightOfCursor => {
-                        buffer.delete_byte_right_of_cursor();
+                        buffer.delete_char_right_of_cursor();
                     },
                     instr::Instr::DeleteCharRightOfCursorOrEOF => {
-                        if !buffer.delete_byte_right_of_cursor() {
+                        if !buffer.delete_char_right_of_cursor() {
                             return Err(Error::EndOfFile);
                         }
                     },
-                    instr::Instr::MoveCursorLeft         => buffer.move_left(),
-                    instr::Instr::MoveCursorRight        => buffer.move_right(),
+                    instr::Instr::MoveCursorLeft => {
+                        buffer.move_left();
+                    },
+                    instr::Instr::MoveCursorRight => {
+                        buffer.move_right();
+                    },
                     instr::Instr::MoveCursorStart        => buffer.move_start(),
                     instr::Instr::MoveCursorEnd          => buffer.move_end(),
                     instr::Instr::HistoryPrev            => {
                         if history_cursor.incr() {
                             buffer.swap()
                         }
-                        history_cursor.get().map(|s| buffer.replace(s.as_bytes()));
+                        history_cursor.get().map(|s| buffer.replace(s));
                     },
                     instr::Instr::HistoryNext            => {
                         if history_cursor.decr() {
                             buffer.swap()
                         }
-                        history_cursor.get().map(|s| buffer.replace(s.as_bytes()));
+                        history_cursor.get().map(|s| buffer.replace(s));
                     },
                     instr::Instr::Noop                   => (),
                     instr::Instr::Cancel                 => return Err(Error::EndOfFile),
-                    instr::Instr::Clear                  => try!(raw.clear()),
-                    instr::Instr::InsertAtCursor         => buffer.insert_bytes_at_cursor(&seq)
+                    instr::Instr::Clear                  => try!(ctx.raw.clear()),
+                    instr::Instr::InsertAtCursor(text)   => {
+                        buffer.insert_chars_at_cursor(text)
+                    }
                 };
-                seq.clear();
+                for _ in (0..len) {
+                    seq.remove(0);
+                }
             }
         };
     }
@@ -112,15 +134,26 @@ impl Copperline {
     }
 
     /// Reads a line from the input using the specified prompt.
-    pub fn read_line(&mut self, prompt: &str) -> Result<String, Error> {
+    pub fn read_line_with_enc<E: Encoding>(&mut self, prompt: &str, enc: &E) -> Result<String, Error> {
         if Term::is_unsupported_term() || !self.term.is_a_tty() {
             return Err(Error::UnsupportedTerm);
         }
         let result = self.term.acquire_raw_mode().and_then(|mut raw| {
-            readline_edit(&mut self.term, &mut raw, &self.history, prompt)
+            edit(EditCtx {
+                term: &mut self.term,
+                raw: &mut raw,
+                history: &self.history,
+                prompt: prompt,
+                enc: enc
+            })
         });
         println!("");
         result
+    }
+
+    /// Reads a utf8-encoded line from the input using the specified prompt.
+    pub fn read_line(&mut self, prompt: &str) -> Result<String, Error> {
+        self.read_line_with_enc(prompt, UTF_8)
     }
 
     /// Returns the current length of the history.

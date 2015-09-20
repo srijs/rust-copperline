@@ -1,5 +1,7 @@
 use std::clone::Clone;
 
+use encoding::types::{Encoding, RawDecoder};
+
 #[derive(Debug)]
 pub enum Token {
     Null,
@@ -38,13 +40,13 @@ pub enum Token {
     EscBracketD,
     EscBracketH,
     EscBracketF,
-    Text
+    Text(String)
 }
 
 pub enum Result {
     Error,
     Incomplete,
-    Success(Token)
+    Success(Token, usize)
 }
 
 fn match_head(i: &u8) -> Option<Token> {
@@ -78,15 +80,7 @@ fn match_head(i: &u8) -> Option<Token> {
         26  => Some(Token::CtrlZ),
         27  => Some(Token::Esc),
         127 => Some(Token::Backspace),
-        _   => {
-            if *i >= 32 && *i < 127 {
-                Some(Token::Text)
-            } else if *i > 127 {
-                Some(Token::Text)
-            } else {
-                None
-            }
-        }
+        _   => None
     }
 }
 
@@ -103,7 +97,7 @@ fn parse_esc_bracket(vec: &[u8]) -> Result {
                         let j = j.clone();
                         match j as char {
                             '~' => match i as char {
-                                '3' => Result::Success(Token::EscBracket3T),
+                                '3' => Result::Success(Token::EscBracket3T, 4),
                                 _ => Result::Error
                             },
                             _ => Result::Error
@@ -112,12 +106,12 @@ fn parse_esc_bracket(vec: &[u8]) -> Result {
                 }
             } else {
                 match i as char {
-                    'A' => Result::Success(Token::EscBracketA),
-                    'B' => Result::Success(Token::EscBracketB),
-                    'C' => Result::Success(Token::EscBracketC),
-                    'D' => Result::Success(Token::EscBracketD),
-                    'F' => Result::Success(Token::EscBracketF),
-                    'H' => Result::Success(Token::EscBracketH),
+                    'A' => Result::Success(Token::EscBracketA, 3),
+                    'B' => Result::Success(Token::EscBracketB, 3),
+                    'C' => Result::Success(Token::EscBracketC, 3),
+                    'D' => Result::Success(Token::EscBracketD, 3),
+                    'F' => Result::Success(Token::EscBracketF, 3),
+                    'H' => Result::Success(Token::EscBracketH, 3),
                     _ => Result::Error // TODO: implement more
                 }
             }
@@ -141,13 +135,20 @@ fn parse_esc(vec: &[u8]) -> Result {
     }
 }
 
-pub fn parse(vec: &[u8]) -> Result {
+pub fn parse<E: Encoding>(vec: &[u8], enc: &E) -> Result {
     match vec.get(0) {
         None => Result::Incomplete,
         Some(i) => match match_head(i) {
             Some(Token::Esc) => parse_esc(vec),
-            Some(t) => Result::Success(t),
-            None => Result::Error
+            Some(t) => Result::Success(t, 1),
+            None => {
+                let mut dec = enc.raw_decoder();
+                let mut text = String::new();
+                match dec.raw_feed(vec, &mut text) {
+                    (offset, None) => Result::Success(Token::Text(text), offset),
+                    (_, Some(_)) => Result::Error
+                }
+            }
         }
     }
 }
