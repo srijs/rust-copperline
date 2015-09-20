@@ -20,6 +20,7 @@ extern crate unicode_width;
 extern crate encoding;
 extern crate strcursor;
 
+mod enc;
 mod error;
 mod buffer;
 mod history;
@@ -29,23 +30,24 @@ mod term;
 
 use std::os::unix::io::{RawFd, AsRawFd};
 
-use encoding::types::Encoding;
-use encoding::all::UTF_8;
+use encoding::types::EncodingRef;
+use encoding::all::{ASCII, UTF_8};
 
+pub use enc::Encoding;
 pub use error::Error;
 use history::History;
 use buffer::Buffer;
 use term::{Term, RawMode};
 
-struct EditCtx<'a, E: 'a> {
+struct EditCtx<'a> {
     term: &'a mut Term,
     raw: &'a mut RawMode,
     history: &'a History,
     prompt: &'a str,
-    enc: &'a E
+    enc: EncodingRef
 }
 
-fn edit<'a, E: Encoding>(ctx: EditCtx<'a, E>) -> Result<String, Error> {
+fn edit<'a>(ctx: EditCtx<'a>) -> Result<String, Error> {
     let mut buffer = Buffer::new();
     let mut seq: Vec<u8> = Vec::new();
     let mut history_cursor = history::Cursor::new(ctx.history);
@@ -55,7 +57,9 @@ fn edit<'a, E: Encoding>(ctx: EditCtx<'a, E>) -> Result<String, Error> {
         seq.push(byte);
 
         match parser::parse(&seq, ctx.enc) {
-            parser::Result::Error => seq.clear(),
+            parser::Result::Error => {
+                return Result::Err(Error::InvalidEncoding);
+            },
             parser::Result::Incomplete => (),
             parser::Result::Success(token, len) => {
                 match instr::interpret_token(token) {
@@ -134,7 +138,7 @@ impl Copperline {
     }
 
     /// Reads a line from the input using the specified prompt.
-    pub fn read_line_with_enc<E: Encoding>(&mut self, prompt: &str, enc: &E) -> Result<String, Error> {
+    fn read_line_with_enc(&mut self, prompt: &str, enc: EncodingRef) -> Result<String, Error> {
         if Term::is_unsupported_term() || !self.term.is_a_tty() {
             return Err(Error::UnsupportedTerm);
         }
@@ -151,8 +155,18 @@ impl Copperline {
         result
     }
 
-    /// Reads a utf8-encoded line from the input using the specified prompt.
-    pub fn read_line(&mut self, prompt: &str) -> Result<String, Error> {
+    /// Reads a line from the input using the specified prompt and encoding.
+    pub fn read_line(&mut self, prompt: &str, encoding: Encoding) -> Result<String, Error> {
+        self.read_line_with_enc(prompt, enc::to_encoding_ref(encoding))
+    }
+
+    /// Reads a ASCII encoded line from the input using the specified prompt.
+    pub fn read_line_ascii(&mut self, prompt: &str) -> Result<String, Error> {
+        self.read_line_with_enc(prompt, ASCII)
+    }
+
+    /// Reads a UTF-8 encoded line from the input using the specified prompt.
+    pub fn read_line_utf8(&mut self, prompt: &str) -> Result<String, Error> {
         self.read_line_with_enc(prompt, UTF_8)
     }
 

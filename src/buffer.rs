@@ -2,7 +2,6 @@ use std::mem::swap;
 use std::ops::Deref;
 
 use unicode_width::UnicodeWidthStr;
-use unicode_width::UnicodeWidthChar;
 
 use strcursor::StrCursor;
 

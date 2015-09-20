@@ -1,6 +1,6 @@
 use std::clone::Clone;
 
-use encoding::types::{Encoding, RawDecoder};
+use encoding::types::{EncodingRef, RawDecoder};
 
 #[derive(Debug)]
 pub enum Token {
@@ -135,7 +135,7 @@ fn parse_esc(vec: &[u8]) -> Result {
     }
 }
 
-pub fn parse<E: Encoding>(vec: &[u8], enc: &E) -> Result {
+pub fn parse(vec: &[u8], enc: EncodingRef) -> Result {
     match vec.get(0) {
         None => Result::Incomplete,
         Some(i) => match match_head(i) {
