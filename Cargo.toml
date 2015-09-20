@@ -1,6 +1,6 @@
 [package]
 name = "copperline"
-version = "0.2.0"
+version = "0.2.1"
 authors = ["Sam Rijs <srijs@airpost.net>"]
 description = "Pure-Rust Command Line Editing Library"
 license = "MIT"
