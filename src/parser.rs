@@ -31,6 +31,7 @@ pub enum Token {
     CtrlZ,
     Esc,
     Backspace,
+    EscBracket3T,
     EscBracketA,
     EscBracketB,
     EscBracketC,
@@ -90,7 +91,16 @@ fn parse_esc_bracket(vec: &Vec<u8>) -> Result {
                 /* Extended escape, read additional byte. */
                 match vec.get(3) {
                     Option::None => Result::Incomplete,
-                    Option::Some(_) => Result::Error // TODO: implement
+                    Option::Some(j) => {
+                        let j = j.clone();
+                        match j as char {
+                            '~' => match i as char {
+                                '3' => Result::Success(Token::EscBracket3T),
+                                _ => Result::Error
+                            },
+                            _ => Result::Error
+                        }
+                    }
                 }
             } else {
                 match i as char {

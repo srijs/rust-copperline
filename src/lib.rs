@@ -48,8 +48,13 @@ fn readline_edit(term: &mut Term, raw: &mut RawMode, history: &History, prompt: 
                     instr::Instr::Done                   => {
                         return buffer.to_string();
                     },
-                    instr::Instr::DeleteCharLeftOfCursor => buffer.delete_byte_left_of_cursor(),
+                    instr::Instr::DeleteCharLeftOfCursor => {
+                        buffer.delete_byte_left_of_cursor();
+                    },
                     instr::Instr::DeleteCharRightOfCursor => {
+                        buffer.delete_byte_right_of_cursor();
+                    },
+                    instr::Instr::DeleteCharRightOfCursorOrEOF => {
                         if !buffer.delete_byte_right_of_cursor() {
                             return Err(Error::EndOfFile);
                         }
