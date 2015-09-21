@@ -104,7 +104,7 @@ impl Buffer {
     }
 
     fn char_pos(&self) -> usize {
-         self.cursor().slice_before().width()
+         UnicodeWidthStr::width(self.cursor().slice_before())
     }
 
     pub fn get_line(&self, prompt: &str) -> Vec<u8> {
