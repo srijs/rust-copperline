@@ -137,7 +137,10 @@ fn move_and_insert_ascii() {
     buf.insert_char_at_cursor('w');
     buf.move_end();
     buf.insert_char_at_cursor('c');
-    assert_eq!(buf.to_string(), "wxabc".to_string());
+    buf.move_left();
+    buf.move_left();
+    buf.delete_char_left_of_cursor();
+    assert_eq!(buf.to_string(), "wxbc".to_string());
 }
 
 #[test]
@@ -154,7 +157,10 @@ fn move_and_insert_cyrillic() {
     buf.insert_char_at_cursor('Ѿ');
     buf.move_end();
     buf.insert_char_at_cursor('Җ');
-    assert_eq!(buf.to_string(), "ѾчЙЊҖ".to_string());
+    buf.move_left();
+    buf.move_left();
+    buf.delete_char_left_of_cursor();
+    assert_eq!(buf.to_string(), "ѾчЊҖ".to_string());
 }
 
 #[test]
@@ -171,5 +177,8 @@ fn move_and_insert_cjk() {
     buf.insert_char_at_cursor('乫');
     buf.move_end();
     buf.insert_char_at_cursor('憛');
-    assert_eq!(buf.to_string(), "乫䨻䩖䦴憛".to_string());
+    buf.move_left();
+    buf.move_left();
+    buf.delete_char_left_of_cursor();
+    assert_eq!(buf.to_string(), "乫䨻䦴憛".to_string());
 }
