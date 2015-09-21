@@ -112,7 +112,7 @@ fn parse_esc_bracket(vec: &[u8]) -> Result {
                     'D' => Result::Success(Token::EscBracketD, 3),
                     'F' => Result::Success(Token::EscBracketF, 3),
                     'H' => Result::Success(Token::EscBracketH, 3),
-                    _ => Result::Error(3) // TODO: implement more
+                    _ => Result::Error(2) // TODO: implement more
                 }
             }
         }
