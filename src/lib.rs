@@ -57,8 +57,10 @@ fn edit<'a>(ctx: EditCtx<'a>) -> Result<String, Error> {
         seq.push(byte);
 
         match parser::parse(&seq, ctx.enc) {
-            parser::Result::Error => {
-                return Result::Err(Error::InvalidEncoding);
+            parser::Result::Error(len) => {
+                for _ in (0..len) {
+                    seq.remove(0);
+                }
             },
             parser::Result::Incomplete => (),
             parser::Result::Success(token, len) => {

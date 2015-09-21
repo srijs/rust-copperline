@@ -44,7 +44,7 @@ pub enum Token {
 }
 
 pub enum Result {
-    Error,
+    Error(usize),
     Incomplete,
     Success(Token, usize)
 }
@@ -98,9 +98,9 @@ fn parse_esc_bracket(vec: &[u8]) -> Result {
                         match j as char {
                             '~' => match i as char {
                                 '3' => Result::Success(Token::EscBracket3T, 4),
-                                _ => Result::Error
+                                _ => Result::Error(4)
                             },
-                            _ => Result::Error
+                            _ => Result::Error(4)
                         }
                     }
                 }
@@ -112,7 +112,7 @@ fn parse_esc_bracket(vec: &[u8]) -> Result {
                     'D' => Result::Success(Token::EscBracketD, 3),
                     'F' => Result::Success(Token::EscBracketF, 3),
                     'H' => Result::Success(Token::EscBracketH, 3),
-                    _ => Result::Error // TODO: implement more
+                    _ => Result::Error(3) // TODO: implement more
                 }
             }
         }
@@ -127,9 +127,9 @@ fn parse_esc(vec: &[u8]) -> Result {
             if i as char == '[' {
                 parse_esc_bracket(vec)
             } else if i as char == '0' {
-                Result::Error // TODO: implement
+                Result::Error(2) // TODO: implement
             } else {
-                Result::Error
+                Result::Error(2)
             }
         }
     }
@@ -146,7 +146,7 @@ pub fn parse(vec: &[u8], enc: EncodingRef) -> Result {
                 let mut text = String::new();
                 match dec.raw_feed(vec, &mut text) {
                     (offset, None) => Result::Success(Token::Text(text), offset),
-                    (_, Some(_)) => Result::Error
+                    (offset, Some(_)) => Result::Error(offset)
                 }
             }
         }
