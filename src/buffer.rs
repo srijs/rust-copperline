@@ -156,3 +156,20 @@ fn move_and_insert_cyrillic() {
     buf.insert_char_at_cursor('Җ');
     assert_eq!(buf.to_string(), "ѾчЙЊҖ".to_string());
 }
+
+#[test]
+fn move_and_insert_cjk() {
+    let mut buf = Buffer::new();
+    buf.insert_char_at_cursor('䩖');
+    buf.move_left();
+    buf.insert_char_at_cursor('䨻');
+    buf.move_left();
+    buf.move_right();
+    buf.move_right();
+    buf.insert_char_at_cursor('䦴');
+    buf.move_start();
+    buf.insert_char_at_cursor('乫');
+    buf.move_end();
+    buf.insert_char_at_cursor('憛');
+    assert_eq!(buf.to_string(), "乫䨻䩖䦴憛".to_string());
+}
