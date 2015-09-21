@@ -122,3 +122,37 @@ impl Buffer {
     }
 
 }
+
+#[test]
+fn move_and_insert_ascii() {
+    let mut buf = Buffer::new();
+    buf.insert_char_at_cursor('a');
+    buf.move_left();
+    buf.insert_char_at_cursor('x');
+    buf.move_left();
+    buf.move_right();
+    buf.move_right();
+    buf.insert_char_at_cursor('b');
+    buf.move_start();
+    buf.insert_char_at_cursor('w');
+    buf.move_end();
+    buf.insert_char_at_cursor('c');
+    assert_eq!(buf.to_string(), "wxabc".to_string());
+}
+
+#[test]
+fn move_and_insert_cyrillic() {
+    let mut buf = Buffer::new();
+    buf.insert_char_at_cursor('Й');
+    buf.move_left();
+    buf.insert_char_at_cursor('ч');
+    buf.move_left();
+    buf.move_right();
+    buf.move_right();
+    buf.insert_char_at_cursor('Њ');
+    buf.move_start();
+    buf.insert_char_at_cursor('Ѿ');
+    buf.move_end();
+    buf.insert_char_at_cursor('Җ');
+    assert_eq!(buf.to_string(), "ѾчЙЊҖ".to_string());
+}
