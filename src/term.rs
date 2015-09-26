@@ -55,7 +55,7 @@ impl RawMode {
         let mut buf = vec![];
         sin.lock().read_until(82, &mut buf);
         buf.reverse();
-        buf[1] == 49
+        buf[1] == 49 && buf[2] == 59
     }
 
     pub fn protect(&mut self) -> Result<(), nix::Error> {
