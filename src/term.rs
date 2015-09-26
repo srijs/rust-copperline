@@ -1,5 +1,5 @@
 use std::os::unix::io::RawFd;
-use std::io::{Write, BufRead};
+use std::io::{stdin, stdout, Write, BufRead};
 
 use std;
 use libc;
@@ -49,9 +49,9 @@ impl RawMode {
     }
 
     fn check_newline(&mut self) -> bool {
-        std::io::stdout().write(b"\x1b[6n");
-        std::io::stdout().flush();
-        let mut sin = std::io::stdin();
+        stdout().write(b"\x1b[6n");
+        stdout().flush();
+        let mut sin = stdin();
         let mut buf = vec![];
         sin.lock().read_until(82, &mut buf);
         buf.reverse();
