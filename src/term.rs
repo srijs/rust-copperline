@@ -1,4 +1,5 @@
 use std::os::unix::io::RawFd;
+use std::io::{Write, BufRead};
 
 use std;
 use libc;
@@ -45,6 +46,24 @@ impl RawMode {
 
     pub fn clear(&mut self) -> Result<(), nix::Error> {
         self.write(b"\x1b[H\x1b[2J").map(|_| ())
+    }
+
+    fn check_newline(&mut self) -> bool {
+        std::io::stdout().write(b"\x1b[6n");
+        std::io::stdout().flush();
+        let mut sin = std::io::stdin();
+        let mut buf = vec![];
+        sin.lock().read_until(82, &mut buf);
+        buf.reverse();
+        buf[1] == 49
+    }
+
+    pub fn protect(&mut self) -> Result<(), nix::Error> {
+        if !self.check_newline() {
+            self.write(b"\x1b[7m%\x1b[0m\n").map(|_| ())
+        } else {
+            Ok(())
+        }
     }
 
 }
