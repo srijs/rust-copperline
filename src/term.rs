@@ -1,5 +1,5 @@
 use std::os::unix::io::RawFd;
-use std::io::{stdin, stdout, Write, BufRead};
+use std::io::{stdin, BufRead, stdout, Write};
 
 use std;
 use libc;
@@ -46,24 +46,6 @@ impl RawMode {
 
     pub fn clear(&mut self) -> Result<(), nix::Error> {
         self.write(b"\x1b[H\x1b[2J").map(|_| ())
-    }
-
-    fn check_newline(&mut self) -> bool {
-        stdout().write(b"\x1b[6n");
-        stdout().flush();
-        let mut sin = stdin();
-        let mut buf = vec![];
-        sin.lock().read_until(82, &mut buf);
-        buf.reverse();
-        buf[1] == 49 && buf[2] == 59
-    }
-
-    pub fn protect(&mut self) -> Result<(), nix::Error> {
-        if !self.check_newline() {
-            self.write(b"\x1b[7m%\x1b[0m\n").map(|_| ())
-        } else {
-            Ok(())
-        }
     }
 
 }
@@ -116,6 +98,24 @@ impl Term {
             return Ok(None);
         }
         Ok(Some(input[0]))
+    }
+
+    fn check_newline(&self) -> bool {
+        stdout().write(b"\x1b[6n");
+        stdout().flush();
+        let mut sin = stdin();
+        let mut buf = vec![];
+        sin.lock().read_until(82, &mut buf);
+        buf.reverse();
+        buf[1] == 49 && buf[2] == 59
+    }
+
+    pub fn protect(&mut self) -> Result<(), nix::Error> {
+        if !self.check_newline() {
+            write(self.out_fd, b"\x1b[7m%\x1b[0m\n").map(|_| ())
+        } else {
+            Ok(())
+        }
     }
 
 }
