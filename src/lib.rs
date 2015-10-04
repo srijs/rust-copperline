@@ -28,8 +28,10 @@ mod history;
 mod parser;
 mod instr;
 mod edit;
+mod run;
 mod term;
 
+use std::mem::drop;
 use std::os::unix::io::{RawFd, AsRawFd};
 
 use encoding::types::EncodingRef;
@@ -38,31 +40,9 @@ use encoding::all::{ASCII, UTF_8};
 pub use enc::Encoding;
 pub use error::Error;
 use history::History;
-use term::{Term, RawMode};
-use edit::{EditCtx, EditResult, edit};
-
-struct RunCtx<'a> {
-    term: &'a mut Term,
-    raw: &'a mut RawMode,
-    history: &'a History,
-    prompt: &'a str,
-    enc: EncodingRef
-}
-
-fn run<'a>(ctx: RunCtx<'a>) -> Result<String, Error> {
-    let mut edit_ctx = EditCtx::new(ctx.prompt, ctx.history, ctx.enc)
-    loop {
-        match edit(&mut edit_ctx) {
-            EditResult::Cont(line) => {
-                try!(ctx.raw.write(&line));
-                let read = try!(ctx.term.read_byte());
-                let byte = try!(read.ok_or(Error::EndOfFile));
-                edit_ctx.fill(byte);
-            },
-            EditResult::Halt(res) => { return res; }
-        }
-    }
-}
+use term::Term;
+use edit::EditCtx;
+use run::RunIO;
 
 pub struct Copperline {
     term: Term,
@@ -94,17 +74,12 @@ impl Copperline {
         if Term::is_unsupported_term() || !self.term.is_a_tty() {
             return Err(Error::UnsupportedTerm);
         }
-        let result = self.term.acquire_raw_mode().and_then(|mut raw| {
-            run(RunCtx {
-                term: &mut self.term,
-                raw: &mut raw,
-                history: &self.history,
-                prompt: prompt,
-                enc: enc
-            })
-        });
+        let mut io = try!(self.term.acquire_io());
+        let ctx = EditCtx::new(prompt, &self.history, enc);
+        let res = run::run(ctx, &mut io);
+        drop(io);
         println!("");
-        result
+        res
     }
 
     /// Reads a line from the input using the specified prompt and encoding.
@@ -149,10 +124,10 @@ impl Copperline {
 
     /// Clears the screen.
     pub fn clear_screen(&mut self) -> Result<(), Error> {
-        let mut raw = try!(self.term.acquire_raw_mode());
+        let mut io = try!(self.term.acquire_io());
         let mut line = builder::Builder::new();
         line.clear_screen();
-        raw.write(&line.build()).map(|_| ()).map_err(Error::ErrNo)
+        io.write(line.build())
     }
 
 }

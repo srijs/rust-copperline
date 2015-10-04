@@ -2,7 +2,7 @@ use std::error;
 use std::fmt;
 use nix;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Error {
     ErrNo(nix::Error),
     Cancel,

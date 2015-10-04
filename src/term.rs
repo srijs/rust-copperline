@@ -10,6 +10,23 @@ use nix::sys::termios;
 use nix::sys::termios::{BRKINT, ICRNL, INPCK, ISTRIP, IXON, OPOST, CS8, ECHO, ICANON, IEXTEN, ISIG, VMIN, VTIME};
 
 use error::Error;
+use run::RunIO;
+
+pub struct TermIO<'a> {
+    in_term: &'a mut Term,
+    out_raw: RawMode
+}
+
+impl<'a> RunIO for TermIO<'a> {
+    fn write(&mut self, w: Vec<u8>) -> Result<(), Error> {
+        try!(self.out_raw.write(&w));
+        Ok(())
+    }
+    fn read_byte(&mut self) -> Result<u8, Error> {
+        let read = try!(self.in_term.read_byte());
+        read.ok_or(Error::EndOfFile)
+    }
+}
 
 pub struct RawMode {
     fd: RawFd,
@@ -79,11 +96,12 @@ impl Term {
         unsafe { libc::isatty(self.out_fd) != 0 }
     }
 
-    pub fn acquire_raw_mode(&self) -> Result<RawMode, Error> {
+    pub fn acquire_io<'a>(&'a mut self) -> Result<TermIO<'a>, Error> {
         if !self.is_a_tty() {
             return Err(Error::from(nix::Error::from_errno(Errno::ENOTTY)));
         }
-        RawMode::acquire(self.out_fd).map_err(Error::from)
+        let raw = try!(RawMode::acquire(self.out_fd).map_err(Error::from));
+        Ok(TermIO { in_term: self, out_raw: raw })
     }
 
     pub fn read_byte(&mut self) -> Result<Option<u8>, nix::Error> {
