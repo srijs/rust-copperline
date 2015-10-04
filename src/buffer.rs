@@ -28,11 +28,6 @@ impl Buffer {
         self.pos = self.front_buf.len();
     }
 
-    pub fn reset(&mut self) {
-        self.front_buf.clear();
-        self.pos = 0;
-    }
-
     pub fn replace(&mut self, s: &str) {
         self.front_buf.clear();
         self.front_buf.extend(s.chars());
@@ -124,6 +119,13 @@ impl Buffer {
 
     pub fn to_string(self) -> String {
         self.front_buf
+    }
+
+    pub fn drain(&mut self) -> String {
+        let mut s = String::new();
+        swap(&mut s, &mut self.front_buf);
+        self.pos = 0;
+        s
     }
 
 }

@@ -38,7 +38,6 @@ use encoding::all::{ASCII, UTF_8};
 pub use enc::Encoding;
 pub use error::Error;
 use history::History;
-use buffer::Buffer;
 use term::{Term, RawMode};
 use edit::{EditCtx, EditResult, edit};
 
@@ -51,31 +50,16 @@ struct RunCtx<'a> {
 }
 
 fn run<'a>(ctx: RunCtx<'a>) -> Result<String, Error> {
-    let mut edit_ctx = EditCtx {
-        buf: Buffer::new(),
-        seq: Vec::new(),
-        history_cursor: history::Cursor::new(ctx.history),
-        enc: ctx.enc
-    };
-    let mut clear = false;
+    let mut edit_ctx = EditCtx::new(ctx.prompt, ctx.history, ctx.enc)
     loop {
-        try!(ctx.raw.write(&edit_ctx.buf.get_line(ctx.prompt, clear)));
-        let byte = try!(try!(ctx.term.read_byte()).ok_or(Error::EndOfFile));
-        edit_ctx.seq.push(byte);
-        let res = edit(&mut edit_ctx);
-        match res {
-            EditResult::Continue => {
-                clear = false;
+        match edit(&mut edit_ctx) {
+            EditResult::Cont(line) => {
+                try!(ctx.raw.write(&line));
+                let read = try!(ctx.term.read_byte());
+                let byte = try!(read.ok_or(Error::EndOfFile));
+                edit_ctx.fill(byte);
             },
-            EditResult::Clear => {
-                clear = true;
-            },
-            EditResult::Halt => {
-                return Ok(edit_ctx.buf.to_string());
-            },
-            EditResult::Err(err) => {
-                return Err(err);
-            }
+            EditResult::Halt(res) => { return res; }
         }
     }
 }
