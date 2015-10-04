@@ -26,6 +26,7 @@ mod buffer;
 mod history;
 mod parser;
 mod instr;
+mod edit;
 mod term;
 
 use std::os::unix::io::{RawFd, AsRawFd};
@@ -38,8 +39,9 @@ pub use error::Error;
 use history::History;
 use buffer::Buffer;
 use term::{Term, RawMode};
+use edit::{EditCtx, EditResult, edit};
 
-struct EditCtx<'a> {
+struct RunCtx<'a> {
     term: &'a mut Term,
     raw: &'a mut RawMode,
     history: &'a History,
@@ -47,70 +49,30 @@ struct EditCtx<'a> {
     enc: EncodingRef
 }
 
-fn edit<'a>(ctx: EditCtx<'a>) -> Result<String, Error> {
-    let mut buffer = Buffer::new();
-    let mut seq: Vec<u8> = Vec::new();
-    let mut history_cursor = history::Cursor::new(ctx.history);
+fn run<'a>(ctx: RunCtx<'a>) -> Result<String, Error> {
+    let mut edit_ctx = EditCtx {
+        buf: Buffer::new(),
+        seq: Vec::new(),
+        history_cursor: history::Cursor::new(ctx.history),
+        enc: ctx.enc
+    };
     loop {
-        try!(ctx.raw.write(&buffer.get_line(ctx.prompt)));
+        try!(ctx.raw.write(&edit_ctx.buf.get_line(ctx.prompt)));
         let byte = try!(try!(ctx.term.read_byte()).ok_or(Error::EndOfFile));
-        seq.push(byte);
-
-        match parser::parse(&seq, ctx.enc) {
-            parser::Result::Error(len) => {
-                for _ in (0..len) {
-                    seq.remove(0);
-                }
+        edit_ctx.seq.push(byte);
+        let res = edit(&mut edit_ctx);
+        match res {
+            EditResult::Continue => (),
+            EditResult::Clear => {
+                try!(ctx.raw.clear());
             },
-            parser::Result::Incomplete => (),
-            parser::Result::Success(token, len) => {
-                match instr::interpret_token(token) {
-                    instr::Instr::Done                   => {
-                        return Result::Ok(buffer.to_string());
-                    },
-                    instr::Instr::DeleteCharLeftOfCursor => {
-                        buffer.delete_char_left_of_cursor();
-                    },
-                    instr::Instr::DeleteCharRightOfCursor => {
-                        buffer.delete_char_right_of_cursor();
-                    },
-                    instr::Instr::DeleteCharRightOfCursorOrEOF => {
-                        if !buffer.delete_char_right_of_cursor() {
-                            return Err(Error::EndOfFile);
-                        }
-                    },
-                    instr::Instr::MoveCursorLeft => {
-                        buffer.move_left();
-                    },
-                    instr::Instr::MoveCursorRight => {
-                        buffer.move_right();
-                    },
-                    instr::Instr::MoveCursorStart        => buffer.move_start(),
-                    instr::Instr::MoveCursorEnd          => buffer.move_end(),
-                    instr::Instr::HistoryPrev            => {
-                        if history_cursor.incr() {
-                            buffer.swap()
-                        }
-                        history_cursor.get().map(|s| buffer.replace(s));
-                    },
-                    instr::Instr::HistoryNext            => {
-                        if history_cursor.decr() {
-                            buffer.swap()
-                        }
-                        history_cursor.get().map(|s| buffer.replace(s));
-                    },
-                    instr::Instr::Noop                   => (),
-                    instr::Instr::Cancel                 => return Err(Error::Cancel),
-                    instr::Instr::Clear                  => try!(ctx.raw.clear()),
-                    instr::Instr::InsertAtCursor(text)   => {
-                        buffer.insert_chars_at_cursor(text)
-                    }
-                };
-                for _ in (0..len) {
-                    seq.remove(0);
-                }
+            EditResult::Halt => {
+                return Ok(edit_ctx.buf.to_string());
+            },
+            EditResult::Err(err) => {
+                return Err(err);
             }
-        };
+        }
     }
 }
 
@@ -145,7 +107,7 @@ impl Copperline {
             return Err(Error::UnsupportedTerm);
         }
         let result = self.term.acquire_raw_mode().and_then(|mut raw| {
-            edit(EditCtx {
+            run(RunCtx {
                 term: &mut self.term,
                 raw: &mut raw,
                 history: &self.history,
