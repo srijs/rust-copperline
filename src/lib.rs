@@ -22,6 +22,7 @@ extern crate strcursor;
 
 mod enc;
 mod error;
+mod builder;
 mod buffer;
 mod history;
 mod parser;
@@ -56,15 +57,18 @@ fn run<'a>(ctx: RunCtx<'a>) -> Result<String, Error> {
         history_cursor: history::Cursor::new(ctx.history),
         enc: ctx.enc
     };
+    let mut clear = false;
     loop {
-        try!(ctx.raw.write(&edit_ctx.buf.get_line(ctx.prompt)));
+        try!(ctx.raw.write(&edit_ctx.buf.get_line(ctx.prompt, clear)));
         let byte = try!(try!(ctx.term.read_byte()).ok_or(Error::EndOfFile));
         edit_ctx.seq.push(byte);
         let res = edit(&mut edit_ctx);
         match res {
-            EditResult::Continue => (),
+            EditResult::Continue => {
+                clear = false;
+            },
             EditResult::Clear => {
-                try!(ctx.raw.clear());
+                clear = true;
             },
             EditResult::Halt => {
                 return Ok(edit_ctx.buf.to_string());
@@ -162,7 +166,9 @@ impl Copperline {
     /// Clears the screen.
     pub fn clear_screen(&mut self) -> Result<(), Error> {
         let mut raw = try!(self.term.acquire_raw_mode());
-        raw.clear().map_err(Error::ErrNo)
+        let mut line = builder::Builder::new();
+        line.clear_screen();
+        raw.write(&line.build()).map(|_| ()).map_err(Error::ErrNo)
     }
 
 }
