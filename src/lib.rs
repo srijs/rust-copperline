@@ -51,6 +51,7 @@ fn edit<'a>(ctx: EditCtx<'a>) -> Result<String, Error> {
     let mut buffer = Buffer::new();
     let mut seq: Vec<u8> = Vec::new();
     let mut history_cursor = history::Cursor::new(ctx.history);
+    try!(ctx.term.protect());
     loop {
         try!(ctx.raw.write(&buffer.get_line(ctx.prompt)));
         let byte = try!(try!(ctx.term.read_byte()).ok_or(Error::EndOfFile));
