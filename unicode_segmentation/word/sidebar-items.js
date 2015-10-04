@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["UWordBoundIndices","External iterator for word boundaries and byte offsets."],["UWordBounds","External iterator for a string's word boundaries."],["UnicodeWords","An iterator over the substrings of a string which, after splitting the string on word boundaries, contain any characters with the Alphabetic property, or with General_Category=Number."]]});

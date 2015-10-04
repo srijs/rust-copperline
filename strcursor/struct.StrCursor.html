@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="rustdoc">
+    <meta name="description" content="API documentation for the Rust `StrCursor` struct in crate `strcursor`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, StrCursor">
+
+    <title>strcursor::StrCursor - Rust</title>
+
+    <link rel="stylesheet" type="text/css" href="../main.css">
+
+    
+    
+</head>
+<body class="rustdoc">
+    <!--[if lte IE 8]>
+    <div class="warning">
+        This old browser is unsupported and will most likely display funky
+        things.
+    </div>
+    <![endif]-->
+
+    
+
+    <section class="sidebar">
+        
+        <p class='location'><a href='index.html'>strcursor</a></p><script>window.sidebarCurrent = {name: 'StrCursor', ty: 'struct', relpath: ''};</script><script defer src="sidebar-items.js"></script>
+    </section>
+
+    <nav class="sub">
+        <form class="search-form js-only">
+            <div class="search-container">
+                <input class="search-input" name="search"
+                       autocomplete="off"
+                       placeholder="Click or press ‘S’ to search, ‘?’ for more options…"
+                       type="search">
+            </div>
+        </form>
+    </nav>
+
+    <section id='main' class="content struct">
+<h1 class='fqn'><span class='in-band'>Struct <a href='index.html'>strcursor</a>::<wbr><a class='struct' href=''>StrCursor</a></span><span class='out-of-band'><span id='render-detail'>
+            <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
+                [<span class='inner'>&#x2212;</span>]
+            </a>
+        </span><a id='src-6' class='srclink' href='../src/strcursor/lib.rs.html#27-30' title='goto source code'>[src]</a></span></h1>
+<pre class='rust struct'>pub struct StrCursor&lt;'a&gt; {
+    // some fields omitted
+}</pre><div class='docblock'><p>This type represents a cursor into a string slice; that is, in addition to having a beginning and end, it also has a current position between those two.  This position can be seeked left and right within those bounds.</p>
+
+<blockquote>
+<p><strong>Note</strong>: the cursor may validly be positioned <em>at</em> the end of the string.  That is, in a position where there are no code points or grapheme clusters to the right of the cursor, and the entire contents of the string is to the left of the cursor.</p>
+</blockquote>
+
+<p>The main reason for this is that <em>sometimes</em>, you want the ability to do things like &quot;advance a character&quot;, and the existing APIs for this can be somewhat verbose.</p>
+
+<p>The cursor guarantees the following at all times:</p>
+
+<ul>
+<li>The cursor position <em>cannot</em> be outside of the original string slice it was constructed with.</li>
+<li>The cursor position <em>cannot</em> lie between unicode code points, meaning that you <em>cannot</em> generate an invalid string slice from a cursor.</li>
+<li>If the codepoint-specific methods are <em>not</em> used, the cursor will always lie between grapheme clusters.</li>
+</ul>
+
+<p>This last point is somewhat important: the cursor is designed to favour operating on grapheme clusters, rather than codepoints.  If you mis-align the cursor with respect to grapheme clusters, the behaviour of methods that deal with grapheme clusters is <em>undefined</em>.</p>
+
+<p>The methods that operate on the cursor will either return a fresh <code>Option&lt;StrCursor&gt;</code> (depending on whether the seek operation is valid or not), or mutate the existing cursor (in which case, they will <em>panic</em> if the seek operation is not valid).</p>
+</div><h2 id='methods'>Methods</h2><h3 class='impl'><code>impl&lt;'a&gt; <a class='struct' href='../strcursor/struct.StrCursor.html' title='strcursor::StrCursor'>StrCursor</a>&lt;'a&gt;</code></h3><div class='impl-items'><h4 id='method.new_at_start' class='method'><code>fn <a href='#method.new_at_start' class='fnname'>new_at_start</a>(s: &amp;'a <a href='http://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>) -&gt; <a class='struct' href='../strcursor/struct.StrCursor.html' title='strcursor::StrCursor'>StrCursor</a>&lt;'a&gt;</code></h4>
+<div class='docblock'><p>Create a new cursor at the start of <code>s</code>.</p>
+</div><h4 id='method.new_at_end' class='method'><code>fn <a href='#method.new_at_end' class='fnname'>new_at_end</a>(s: &amp;'a <a href='http://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>) -&gt; <a class='struct' href='../strcursor/struct.StrCursor.html' title='strcursor::StrCursor'>StrCursor</a>&lt;'a&gt;</code></h4>
+<div class='docblock'><p>Create a new cursor past at the end of <code>s</code>.</p>
+</div><h4 id='method.new_at_left_of_byte_pos' class='method'><code>fn <a href='#method.new_at_left_of_byte_pos' class='fnname'>new_at_left_of_byte_pos</a>(s: &amp;'a <a href='http://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>, byte_pos: <a href='http://doc.rust-lang.org/nightly/std/primitive.usize.html'>usize</a>) -&gt; <a class='struct' href='../strcursor/struct.StrCursor.html' title='strcursor::StrCursor'>StrCursor</a>&lt;'a&gt;</code></h4>
+<div class='docblock'><p>Create a new cursor at the first grapheme cluster which begins at or to the left of the given byte position.</p>
+</div><h4 id='method.new_at_right_of_byte_pos' class='method'><code>fn <a href='#method.new_at_right_of_byte_pos' class='fnname'>new_at_right_of_byte_pos</a>(s: &amp;'a <a href='http://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>, byte_pos: <a href='http://doc.rust-lang.org/nightly/std/primitive.usize.html'>usize</a>) -&gt; <a class='struct' href='../strcursor/struct.StrCursor.html' title='strcursor::StrCursor'>StrCursor</a>&lt;'a&gt;</code></h4>
+<div class='docblock'><p>Create a new cursor at the first grapheme cluster which begins at or to the right of the given byte position.</p>
+</div><h4 id='method.new_at_cp_left_of_byte_pos' class='method'><code>fn <a href='#method.new_at_cp_left_of_byte_pos' class='fnname'>new_at_cp_left_of_byte_pos</a>(s: &amp;'a <a href='http://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>, byte_pos: <a href='http://doc.rust-lang.org/nightly/std/primitive.usize.html'>usize</a>) -&gt; <a class='struct' href='../strcursor/struct.StrCursor.html' title='strcursor::StrCursor'>StrCursor</a>&lt;'a&gt;</code></h4>
+<div class='docblock'><p>Create a new cursor at the first code point which begins at or to the left of the given byte position.</p>
+
+<h1 id="note" class='section-header'><a
+                           href="#note">Note</a></h1>
+<p>Where possible, you should prefer <code>new_at_left_of_byte_pos</code>.</p>
+</div><h4 id='method.new_at_cp_right_of_byte_pos' class='method'><code>fn <a href='#method.new_at_cp_right_of_byte_pos' class='fnname'>new_at_cp_right_of_byte_pos</a>(s: &amp;'a <a href='http://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>, byte_pos: <a href='http://doc.rust-lang.org/nightly/std/primitive.usize.html'>usize</a>) -&gt; <a class='struct' href='../strcursor/struct.StrCursor.html' title='strcursor::StrCursor'>StrCursor</a>&lt;'a&gt;</code></h4>
+<div class='docblock'><p>Create a new cursor at the first code point which begins at or to the right of the given byte position.</p>
+
+<h1 id="note" class='section-header'><a
+                           href="#note">Note</a></h1>
+<p>Where possible, you should prefer <code>new_at_right_of_byte_pos</code>.</p>
+</div><h4 id='method.at_prev' class='method'><code>fn <a href='#method.at_prev' class='fnname'>at_prev</a>(self) -&gt; <a class='enum' href='http://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;<a class='struct' href='../strcursor/struct.StrCursor.html' title='strcursor::StrCursor'>StrCursor</a>&lt;'a&gt;&gt;</code></h4>
+<div class='docblock'><p>Returns a new cursor at the beginning of the previous grapheme cluster, or <code>None</code> if the cursor is currently positioned at the beginning of the string.</p>
+</div><h4 id='method.at_next' class='method'><code>fn <a href='#method.at_next' class='fnname'>at_next</a>(self) -&gt; <a class='enum' href='http://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;<a class='struct' href='../strcursor/struct.StrCursor.html' title='strcursor::StrCursor'>StrCursor</a>&lt;'a&gt;&gt;</code></h4>
+<div class='docblock'><p>Returns a new cursor at the beginning of the next grapheme cluster, or <code>None</code> if the cursor is currently positioned at the end of the string.</p>
+</div><h4 id='method.at_prev_cp' class='method'><code>fn <a href='#method.at_prev_cp' class='fnname'>at_prev_cp</a>(self) -&gt; <a class='enum' href='http://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;<a class='struct' href='../strcursor/struct.StrCursor.html' title='strcursor::StrCursor'>StrCursor</a>&lt;'a&gt;&gt;</code></h4>
+<div class='docblock'><p>Returns a new cursor at the beginning of the previous code point, or <code>None</code> if the cursor is currently positioned at the beginning of the string.</p>
+
+<h1 id="note" class='section-header'><a
+                           href="#note">Note</a></h1>
+<p>Where possible, you should prefer <code>at_prev</code>.</p>
+</div><h4 id='method.at_next_cp' class='method'><code>fn <a href='#method.at_next_cp' class='fnname'>at_next_cp</a>(self) -&gt; <a class='enum' href='http://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;<a class='struct' href='../strcursor/struct.StrCursor.html' title='strcursor::StrCursor'>StrCursor</a>&lt;'a&gt;&gt;</code></h4>
+<div class='docblock'><p>Returns a new cursor at the beginning of the next code point, or <code>None</code> if the cursor is currently positioned at the end of the string.</p>
+
+<h1 id="note" class='section-header'><a
+                           href="#note">Note</a></h1>
+<p>Where possible, you should prefer <code>at_next</code>.</p>
+</div><h4 id='method.seek_prev' class='method'><code>fn <a href='#method.seek_prev' class='fnname'>seek_prev</a>(&amp;mut self)</code></h4>
+<div class='docblock'><p>Seeks the cursor to the beginning of the previous grapheme cluster.</p>
+
+<h1 id="panics" class='section-header'><a
+                           href="#panics">Panics</a></h1>
+<p>If the cursor is currently at the start of the string, then this function will panic.</p>
+</div><h4 id='method.seek_next' class='method'><code>fn <a href='#method.seek_next' class='fnname'>seek_next</a>(&amp;mut self)</code></h4>
+<div class='docblock'><p>Seeks the cursor to the beginning of the next grapheme cluster.</p>
+
+<h1 id="panics" class='section-header'><a
+                           href="#panics">Panics</a></h1>
+<p>If the cursor is currently at the end of the string, then this function will panic.</p>
+</div><h4 id='method.seek_prev_cp' class='method'><code>fn <a href='#method.seek_prev_cp' class='fnname'>seek_prev_cp</a>(&amp;mut self)</code></h4>
+<div class='docblock'><p>Seeks the cursor to the beginning of the previous grapheme cluster.</p>
+
+<h1 id="panics" class='section-header'><a
+                           href="#panics">Panics</a></h1>
+<p>If the cursor is currently at the start of the string, then this function will panic.</p>
+
+<h1 id="note" class='section-header'><a
+                           href="#note">Note</a></h1>
+<p>Where possible, you should prefer <code>seek_prev</code>.</p>
+</div><h4 id='method.seek_next_cp' class='method'><code>fn <a href='#method.seek_next_cp' class='fnname'>seek_next_cp</a>(&amp;mut self)</code></h4>
+<div class='docblock'><p>Seeks the cursor to the beginning of the next grapheme cluster.</p>
+
+<h1 id="panics" class='section-header'><a
+                           href="#panics">Panics</a></h1>
+<p>If the cursor is currently at the end of the string, then this function will panic.</p>
+
+<h1 id="note" class='section-header'><a
+                           href="#note">Note</a></h1>
+<p>Where possible, you should prefer <code>seek_next</code>.</p>
+</div><h4 id='method.before' class='method'><code>fn <a href='#method.before' class='fnname'>before</a>(&amp;self) -&gt; <a class='enum' href='http://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;&amp;'a <a href='http://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>&gt;</code></h4>
+<div class='docblock'><p>Returns the grapheme cluster immediately to the left of the cursor, or <code>None</code> is the cursor is at the start of the string.</p>
+</div><h4 id='method.after' class='method'><code>fn <a href='#method.after' class='fnname'>after</a>(&amp;self) -&gt; <a class='enum' href='http://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;&amp;'a <a href='http://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>&gt;</code></h4>
+<div class='docblock'><p>Returns the grapheme cluster immediately to the right of the cursor, or <code>None</code> is the cursor is at the end of the string.</p>
+</div><h4 id='method.slice_before' class='method'><code>fn <a href='#method.slice_before' class='fnname'>slice_before</a>(&amp;self) -&gt; &amp;'a <a href='http://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a></code></h4>
+<div class='docblock'><p>Returns the contents of the string to the left of the cursor.</p>
+</div><h4 id='method.slice_after' class='method'><code>fn <a href='#method.slice_after' class='fnname'>slice_after</a>(&amp;self) -&gt; &amp;'a <a href='http://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a></code></h4>
+<div class='docblock'><p>Returns the contents of the string to the right of the cursor.</p>
+</div><h4 id='method.cp_before' class='method'><code>fn <a href='#method.cp_before' class='fnname'>cp_before</a>(&amp;self) -&gt; <a class='enum' href='http://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;<a href='http://doc.rust-lang.org/nightly/std/primitive.char.html'>char</a>&gt;</code></h4>
+<div class='docblock'><p>Returns the code point immediately to the left of the cursor, or <code>None</code> is the cursor is at the start of the string.</p>
+</div><h4 id='method.cp_after' class='method'><code>fn <a href='#method.cp_after' class='fnname'>cp_after</a>(&amp;self) -&gt; <a class='enum' href='http://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;<a href='http://doc.rust-lang.org/nightly/std/primitive.char.html'>char</a>&gt;</code></h4>
+<div class='docblock'><p>Returns the code point immediately to the right of the cursor, or <code>None</code> is the cursor is at the end of the string.</p>
+</div><h4 id='method.byte_pos' class='method'><code>fn <a href='#method.byte_pos' class='fnname'>byte_pos</a>(&amp;self) -&gt; <a href='http://doc.rust-lang.org/nightly/std/primitive.usize.html'>usize</a></code></h4>
+<div class='docblock'><p>Returns the cursor&#39;s current position within the string as the number of UTF-8 code units from the beginning of the string.</p>
+</div></div><h2 id='implementations'>Trait Implementations</h2><h3 class='impl'><code>impl&lt;'a&gt; <a class='trait' href='http://doc.rust-lang.org/nightly/core/marker/trait.Copy.html' title='core::marker::Copy'>Copy</a> for <a class='struct' href='../strcursor/struct.StrCursor.html' title='strcursor::StrCursor'>StrCursor</a>&lt;'a&gt;</code></h3><div class='impl-items'></div><h3 class='impl'><code>impl&lt;'a&gt; <a class='trait' href='http://doc.rust-lang.org/nightly/core/clone/trait.Clone.html' title='core::clone::Clone'>Clone</a> for <a class='struct' href='../strcursor/struct.StrCursor.html' title='strcursor::StrCursor'>StrCursor</a>&lt;'a&gt;</code></h3><div class='impl-items'><h4 id='method.clone' class='method'><code>fn <a href='http://doc.rust-lang.org/nightly/core/clone/trait.Clone.html#method.clone' class='fnname'>clone</a>(&amp;self) -&gt; <a class='struct' href='../strcursor/struct.StrCursor.html' title='strcursor::StrCursor'>StrCursor</a>&lt;'a&gt;</code></h4>
+<h4 id='method.clone_from' class='method'><code>fn <a href='http://doc.rust-lang.org/nightly/core/clone/trait.Clone.html#method.clone_from' class='fnname'>clone_from</a>(&amp;mut self, source: &amp;Self)</code></h4>
+</div><h3 class='impl'><code>impl&lt;'a&gt; <a class='trait' href='http://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html' title='core::fmt::Debug'>Debug</a> for <a class='struct' href='../strcursor/struct.StrCursor.html' title='strcursor::StrCursor'>StrCursor</a>&lt;'a&gt;</code></h3><div class='impl-items'><h4 id='method.fmt' class='method'><code>fn <a href='http://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html#method.fmt' class='fnname'>fmt</a>(&amp;self, fmt: &amp;mut <a class='struct' href='http://doc.rust-lang.org/nightly/core/fmt/struct.Formatter.html' title='core::fmt::Formatter'>Formatter</a>) -&gt; <a class='enum' href='http://doc.rust-lang.org/nightly/core/result/enum.Result.html' title='core::result::Result'>Result</a>&lt;<a href='http://doc.rust-lang.org/nightly/std/primitive.tuple.html'>()</a>, <a class='struct' href='http://doc.rust-lang.org/nightly/core/fmt/struct.Error.html' title='core::fmt::Error'>Error</a>&gt;</code></h4>
+</div><h3 class='impl'><code>impl&lt;'a&gt; <a class='trait' href='http://doc.rust-lang.org/nightly/core/cmp/trait.Eq.html' title='core::cmp::Eq'>Eq</a> for <a class='struct' href='../strcursor/struct.StrCursor.html' title='strcursor::StrCursor'>StrCursor</a>&lt;'a&gt;</code></h3><div class='impl-items'></div><h3 class='impl'><code>impl&lt;'a&gt; <a class='trait' href='http://doc.rust-lang.org/nightly/core/cmp/trait.PartialEq.html' title='core::cmp::PartialEq'>PartialEq</a> for <a class='struct' href='../strcursor/struct.StrCursor.html' title='strcursor::StrCursor'>StrCursor</a>&lt;'a&gt;</code></h3><div class='impl-items'><h4 id='method.eq' class='method'><code>fn <a href='http://doc.rust-lang.org/nightly/core/cmp/trait.PartialEq.html#method.eq' class='fnname'>eq</a>(&amp;self, other: &amp;<a class='struct' href='../strcursor/struct.StrCursor.html' title='strcursor::StrCursor'>StrCursor</a>&lt;'a&gt;) -&gt; <a href='http://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a></code></h4>
+<h4 id='method.ne' class='method'><code>fn <a href='http://doc.rust-lang.org/nightly/core/cmp/trait.PartialEq.html#method.ne' class='fnname'>ne</a>(&amp;self, other: &amp;<a class='struct' href='../strcursor/struct.StrCursor.html' title='strcursor::StrCursor'>StrCursor</a>&lt;'a&gt;) -&gt; <a href='http://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a></code></h4>
+</div><h3 class='impl'><code>impl&lt;'a&gt; <a class='trait' href='http://doc.rust-lang.org/nightly/core/cmp/trait.PartialOrd.html' title='core::cmp::PartialOrd'>PartialOrd</a> for <a class='struct' href='../strcursor/struct.StrCursor.html' title='strcursor::StrCursor'>StrCursor</a>&lt;'a&gt;</code></h3><div class='impl-items'><h4 id='method.partial_cmp' class='method'><code>fn <a href='http://doc.rust-lang.org/nightly/core/cmp/trait.PartialOrd.html#method.partial_cmp' class='fnname'>partial_cmp</a>(&amp;self, other: &amp;<a class='struct' href='../strcursor/struct.StrCursor.html' title='strcursor::StrCursor'>StrCursor</a>&lt;'a&gt;) -&gt; <a class='enum' href='http://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;<a class='enum' href='http://doc.rust-lang.org/nightly/core/cmp/enum.Ordering.html' title='core::cmp::Ordering'>Ordering</a>&gt;</code></h4>
+<h4 id='method.lt' class='method'><code>fn <a href='http://doc.rust-lang.org/nightly/core/cmp/trait.PartialOrd.html#method.lt' class='fnname'>lt</a>(&amp;self, other: &amp;Rhs) -&gt; <a href='http://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a></code></h4>
+<h4 id='method.le' class='method'><code>fn <a href='http://doc.rust-lang.org/nightly/core/cmp/trait.PartialOrd.html#method.le' class='fnname'>le</a>(&amp;self, other: &amp;Rhs) -&gt; <a href='http://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a></code></h4>
+<h4 id='method.gt' class='method'><code>fn <a href='http://doc.rust-lang.org/nightly/core/cmp/trait.PartialOrd.html#method.gt' class='fnname'>gt</a>(&amp;self, other: &amp;Rhs) -&gt; <a href='http://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a></code></h4>
+<h4 id='method.ge' class='method'><code>fn <a href='http://doc.rust-lang.org/nightly/core/cmp/trait.PartialOrd.html#method.ge' class='fnname'>ge</a>(&amp;self, other: &amp;Rhs) -&gt; <a href='http://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a></code></h4>
+</div><h3 class='impl'><code>impl&lt;'a&gt; <a class='trait' href='http://doc.rust-lang.org/nightly/core/hash/trait.Hash.html' title='core::hash::Hash'>Hash</a> for <a class='struct' href='../strcursor/struct.StrCursor.html' title='strcursor::StrCursor'>StrCursor</a>&lt;'a&gt;</code></h3><div class='impl-items'><h4 id='method.hash' class='method'><code>fn <a href='http://doc.rust-lang.org/nightly/core/hash/trait.Hash.html#method.hash' class='fnname'>hash</a>&lt;H&gt;(&amp;self, state: &amp;mut H) <span class='where'>where H: <a class='trait' href='http://doc.rust-lang.org/nightly/core/hash/trait.Hasher.html' title='core::hash::Hasher'>Hasher</a></span></code></h4>
+<h4 id='method.hash_slice' class='method'><code>fn <a href='http://doc.rust-lang.org/nightly/core/hash/trait.Hash.html#method.hash_slice' class='fnname'>hash_slice</a>&lt;H&gt;(data: <a href='http://doc.rust-lang.org/nightly/std/primitive.slice.html'>&amp;[Self]</a>, state: &amp;mut H) <span class='where'>where H: <a class='trait' href='http://doc.rust-lang.org/nightly/core/hash/trait.Hasher.html' title='core::hash::Hasher'>Hasher</a></span></code></h4>
+</div></section>
+    <section id='search' class="content hidden"></section>
+
+    <section class="footer"></section>
+
+    <div id="help" class="hidden">
+        <div>
+            <div class="shortcuts">
+                <h1>Keyboard Shortcuts</h1>
+
+                <dl>
+                    <dt>?</dt>
+                    <dd>Show this help dialog</dd>
+                    <dt>S</dt>
+                    <dd>Focus the search field</dd>
+                    <dt>&larrb;</dt>
+                    <dd>Move up in search results</dd>
+                    <dt>&rarrb;</dt>
+                    <dd>Move down in search results</dd>
+                    <dt>&#9166;</dt>
+                    <dd>Go to active search result</dd>
+                </dl>
+            </div>
+
+            <div class="infos">
+                <h1>Search Tricks</h1>
+
+                <p>
+                    Prefix searches with a type followed by a colon (e.g.
+                    <code>fn:</code>) to restrict the search to a given type.
+                </p>
+
+                <p>
+                    Accepted types are: <code>fn</code>, <code>mod</code>,
+                    <code>struct</code>, <code>enum</code>,
+                    <code>trait</code>, <code>typedef</code> (or
+                    <code>tdef</code>).
+                </p>
+
+                <p>
+                    Search functions by type signature (e.g.
+                    <code>vec -> usize</code>)
+                </p>
+            </div>
+        </div>
+    </div>
+
+    
+
+    <script>
+        window.rootPath = "../";
+        window.currentCrate = "strcursor";
+        window.playgroundUrl = "";
+    </script>
+    <script src="../jquery.js"></script>
+    <script src="../main.js"></script>
+    
+    <script async src="../search-index.js"></script>
+</body>
+</html>

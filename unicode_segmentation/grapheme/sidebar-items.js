@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["GraphemeIndices","External iterator for grapheme clusters and byte offsets."],["Graphemes","External iterator for a string's grapheme clusters."]]});

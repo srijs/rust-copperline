@@ -1,1 +1,1 @@
-initSidebarItems({"enum":[["Error",""]],"struct":[["Copperline",""]]});
+initSidebarItems({"enum":[["Encoding",""],["Error",""]],"struct":[["Copperline",""]]});
