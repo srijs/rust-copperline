@@ -100,7 +100,7 @@ fn edit<'a>(ctx: EditCtx<'a>) -> Result<String, Error> {
                         history_cursor.get().map(|s| buffer.replace(s));
                     },
                     instr::Instr::Noop                   => (),
-                    instr::Instr::Cancel                 => return Err(Error::EndOfFile),
+                    instr::Instr::Cancel                 => return Err(Error::Cancel),
                     instr::Instr::Clear                  => try!(ctx.raw.clear()),
                     instr::Instr::InsertAtCursor(text)   => {
                         buffer.insert_chars_at_cursor(text)
