@@ -7,7 +7,8 @@ pub enum Error {
     ErrNo(nix::Error),
     Cancel,
     EndOfFile,
-    UnsupportedTerm
+    UnsupportedTerm,
+    ParseError
 }
 
 impl fmt::Display for Error {
@@ -16,7 +17,8 @@ impl fmt::Display for Error {
             Error::ErrNo(ref err)  => write!(f, "ERRNO: {}", err.errno().desc()),
             Error::Cancel          => write!(f, "Cancelled"),
             Error::EndOfFile       => write!(f, "End of file"),
-            Error::UnsupportedTerm => write!(f, "Unsupported terminal type")
+            Error::UnsupportedTerm => write!(f, "Unsupported terminal type"),
+            Error::ParseError      => write!(f, "Encountered unknown sequence")
         }
     }
 }
@@ -27,7 +29,8 @@ impl error::Error for Error {
             Error::ErrNo(ref err)  => err.errno().desc(),
             Error::Cancel          => "cancelled",
             Error::EndOfFile       => "end of file",
-            Error::UnsupportedTerm => "unsupported terminal type"
+            Error::UnsupportedTerm => "unsupported terminal type",
+            Error::ParseError      => "unknown sequence"
         }
     }
 }

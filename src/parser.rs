@@ -165,3 +165,58 @@ pub fn parse(vec: &[u8], enc: EncodingRef) -> ParseResult<Token> {
         }
     }
 }
+
+fn parse_number(vec: &[u8], off: usize) -> (u64, usize) {
+    vec
+    .iter().skip(off).cloned()
+    .take_while(|&c| c >= 48 && c < 58)
+    .fold((0, 0), |(x, n), c| {
+        (x * 10 + (c as u64 - 48), n + 1)
+    })
+}
+
+#[test]
+fn parse_number_empty() {
+    let v = vec![];
+    assert_eq!(parse_number(&v, 0), (0, 0));
+}
+
+#[test]
+fn parse_number_42() {
+    let v = vec![48 + 4, 48 + 2, 20, 33];
+    assert_eq!(parse_number(&v, 0), (42, 2));
+}
+
+#[test]
+fn parse_number_invalid() {
+    let v = vec![20, 33];
+    assert_eq!(parse_number(&v, 0), (0, 0));
+}
+
+pub fn parse_cursor_pos(vec: &[u8]) -> ParseResult<(u64, u64)> {
+    try!(filter_result(parse_char(vec, 0), |i| i == 27));
+    try!(filter_result(parse_char(vec, 1), |i| i == 91));
+    let (y, n) = parse_number(vec, 2);
+    try!(filter_result(parse_char(vec, 2+n), |i| i == 59));
+    let (x, m) = parse_number(vec, 3+n);
+    try!(filter_result(parse_char(vec, 3+n+m), |i| i == 82));
+    Ok(ParseSuccess((x, y), 4+n+m))
+}
+
+#[test]
+fn parse_cursor_pos_full() {
+    let v = vec![27, 91, 48 + 4, 48 + 2, 59, 48 + 6, 82];
+    assert_eq!(parse_cursor_pos(&v), Ok(ParseSuccess((6, 42), 7)));
+}
+
+#[test]
+fn parse_cursor_pos_incomplete() {
+    let v = vec![27, 91, 48 + 4, 48 + 2, 59, 48 + 6];
+    assert_eq!(parse_cursor_pos(&v), Err(ParseError::Incomplete));
+}
+
+#[test]
+fn parse_cursor_pos_invalid() {
+    let v = vec![27, 91, 48 + 4, 48 + 10, 59, 48 + 6];
+    assert_eq!(parse_cursor_pos(&v), Err(ParseError::Error(4)));
+}

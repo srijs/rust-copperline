@@ -32,4 +32,16 @@ impl Builder {
         self.seq.extend(b"\x1b[H\x1b[2J")
     }
 
+    pub fn reset_color(&mut self) {
+        self.seq.extend(b"\x1b[0m")
+    }
+
+    pub fn invert_color(&mut self) {
+        self.seq.extend(b"\x1b[7m")
+    }
+
+    pub fn ask_cursor_pos(&mut self) {
+        self.seq.extend(b"\x1b[6n")
+    }
+
 }
