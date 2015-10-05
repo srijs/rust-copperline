@@ -3,7 +3,7 @@ use encoding::types::EncodingRef;
 use error::Error;
 use history::{Cursor, History};
 use buffer::Buffer;
-use parser;
+use parser::{parse, ParseError, ParseSuccess};
 use instr;
 
 pub struct EditCtx<'a> {
@@ -40,15 +40,15 @@ pub enum EditResult<C> {
 pub fn edit<'a>(ctx: &mut EditCtx<'a>) -> EditResult<Vec<u8>> {
     use self::EditResult::*;
 
-    let res = match parser::parse(&ctx.seq, ctx.enc) {
-        parser::Result::Error(len) => {
+    let res = match parse(&ctx.seq, ctx.enc) {
+        Err(ParseError::Error(len)) => {
             for _ in (0..len) {
                 ctx.seq.remove(0);
             };
             Cont(false)
         },
-        parser::Result::Incomplete => Cont(false),
-        parser::Result::Success(token, len) => {
+        Err(ParseError::Incomplete) => Cont(false),
+        Ok(ParseSuccess(token, len)) => {
             let res = match instr::interpret_token(token) {
                 instr::Instr::Done => {
                     Halt(Ok(ctx.buf.drain()))
