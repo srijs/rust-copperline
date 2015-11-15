@@ -7,10 +7,11 @@ pub trait RunIO {
 
     fn write(&mut self, Vec<u8>) -> Result<(), Error>;
     fn read_byte(&mut self) -> Result<u8, Error>;
+    fn read_seq(&mut self) -> Result<Vec<u8>, Error>;
 
-    fn prompt(&mut self, w: Vec<u8>) -> Result<u8, Error> {
+    fn prompt(&mut self, w: Vec<u8>) -> Result<Vec<u8>, Error> {
         try!(self.write(w));
-        self.read_byte()
+        self.read_seq()
     }
 
 }
@@ -52,7 +53,10 @@ fn run_edit<'a>(mut ctx: EditCtx<'a>, io: &mut RunIO) -> Result<String, Error> {
     loop {
         match edit(&mut ctx) {
             EditResult::Cont(line) => {
-                ctx.fill(try!(io.prompt(line)));
+                let bytes = try!(io.prompt(line));
+                for byte in bytes.iter() {
+                    ctx.fill(*byte);
+                }
             },
             EditResult::Halt(res) => { return res; }
         }
