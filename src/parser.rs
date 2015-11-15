@@ -153,7 +153,7 @@ fn parse_esc(vec: &[u8]) -> ParseResult<Token> {
 pub fn parse(vec: &[u8], enc: EncodingRef) -> ParseResult<Token> {
     let i = try!(parse_char(vec, 0)).0;
     match match_head(i) {
-        Some(Token::Esc) => parse_esc(vec),
+        Some(Token::Esc) if vec.len() > 1 => parse_esc(vec),
         Some(t) => Ok(ParseSuccess(t, 1)),
         None => {
             let mut dec = enc.raw_decoder();
