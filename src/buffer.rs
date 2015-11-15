@@ -100,6 +100,47 @@ impl Buffer {
         self.pos = self.front_buf.len();
     }
 
+    pub fn move_to_end_of_word(&mut self) {
+        enum State {
+            Whitespace,
+            EndOnWord,
+            EndOnOther,
+        };
+
+        let mut state = State::Whitespace;
+
+        while self.move_right() {
+
+            // XXX maybe use for self.cursor().slice_after().char_indicies()
+            // XXX should we use self.cursor().after()?
+            let c = match self.cursor().cp_after() {
+                Some(c) => c,
+                _ => return,
+            };
+
+            match state {
+                State::Whitespace => match c {
+                    c if c.is_whitespace() => {},
+                    c if is_vi_keyword(c) => {
+                        state = State::EndOnWord;
+                    },
+                    _ => {
+                        state = State::EndOnOther;
+                    }
+                },
+                State::EndOnWord if !is_vi_keyword(c) => {
+                    self.move_left();
+                    return;
+                },
+                State::EndOnOther if c.is_whitespace() || is_vi_keyword(c) => {
+                    self.move_left();
+                    return;
+                },
+                _ => {},
+            }
+        }
+    }
+
     fn char_pos(&self) -> usize {
          UnicodeWidthStr::width(self.cursor().slice_before())
     }
@@ -136,7 +177,15 @@ impl Buffer {
         self.pos = 0;
         s
     }
+}
 
+/// All alphanumeric characters and _ are considered valid for keywords in vi by default.
+fn is_vi_keyword(c: char) -> bool {
+    match c {
+        '_' => true,
+        c if c.is_alphanumeric() => true,
+        _ => false,
+    }
 }
 
 #[test]
@@ -220,4 +269,86 @@ fn move_to_pos_past_end() {
     assert_eq!(buf.char_pos(), end_pos);
     buf.move_to_pos(10_000);
     assert_eq!(buf.char_pos(), end_pos);
+}
+
+#[test]
+fn move_to_end_of_word_simple() {
+    let mut buf = Buffer::new();
+    buf.insert_chars_at_cursor("here are".to_string());
+    let start_pos = buf.char_pos();
+    buf.insert_chars_at_cursor(" som".to_string());
+    let end_pos = buf.char_pos();
+    buf.insert_chars_at_cursor("e words".to_string());
+    buf.move_to_pos(start_pos);
+
+    buf.move_to_end_of_word();
+    assert_eq!(buf.char_pos(), end_pos);
+}
+
+#[test]
+fn move_to_end_of_word_comma() {
+    let mut buf = Buffer::new();
+    buf.insert_chars_at_cursor("here ar".to_string());
+    let start_pos = buf.char_pos();
+    buf.insert_char_at_cursor('e');
+    let end_pos1 = buf.char_pos();
+    buf.insert_chars_at_cursor(", som".to_string());
+    let end_pos2 = buf.char_pos();
+    buf.insert_chars_at_cursor("e words".to_string());
+    buf.move_to_pos(start_pos);
+
+    buf.move_to_end_of_word();
+    assert_eq!(buf.char_pos(), end_pos1);
+    buf.move_to_end_of_word();
+    assert_eq!(buf.char_pos(), end_pos2);
+}
+
+#[test]
+fn move_to_end_of_word_nonkeywords() {
+    let mut buf = Buffer::new();
+    buf.insert_chars_at_cursor("here ar".to_string());
+    let start_pos = buf.char_pos();
+    buf.insert_chars_at_cursor("e,,,".to_string());
+    let end_pos1 = buf.char_pos();
+    buf.insert_chars_at_cursor(",som".to_string());
+    let end_pos2 = buf.char_pos();
+    buf.insert_chars_at_cursor("e words".to_string());
+    buf.move_to_pos(start_pos);
+
+    buf.move_to_end_of_word();
+    assert_eq!(buf.char_pos(), end_pos1);
+    buf.move_to_end_of_word();
+    assert_eq!(buf.char_pos(), end_pos2);
+}
+
+#[test]
+fn move_to_end_of_word_whitespace() {
+    let mut buf = Buffer::new();
+    buf.insert_chars_at_cursor("here are".to_string());
+    let start_pos = buf.char_pos();
+    buf.insert_chars_at_cursor("      som".to_string());
+    let end_pos = buf.char_pos();
+    buf.insert_chars_at_cursor("e words".to_string());
+    buf.move_to_pos(start_pos);
+
+    buf.move_to_end_of_word();
+    assert_eq!(buf.char_pos(), end_pos);
+}
+
+#[test]
+fn move_to_end_of_word_whitespace_nonkeywords() {
+    let mut buf = Buffer::new();
+    buf.insert_chars_at_cursor("here ar".to_string());
+    let start_pos = buf.char_pos();
+    buf.insert_chars_at_cursor("e   ,,,".to_string());
+    let end_pos1 = buf.char_pos();
+    buf.insert_chars_at_cursor(", som".to_string());
+    let end_pos2 = buf.char_pos();
+    buf.insert_chars_at_cursor("e words".to_string());
+    buf.move_to_pos(start_pos);
+
+    buf.move_to_end_of_word();
+    assert_eq!(buf.char_pos(), end_pos1);
+    buf.move_to_end_of_word();
+    assert_eq!(buf.char_pos(), end_pos2);
 }

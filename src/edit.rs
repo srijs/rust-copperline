@@ -142,6 +142,10 @@ pub fn edit<'a>(ctx: &mut EditCtx<'a>) -> EditResult<Vec<u8>> {
                     ctx.buf.move_end();
                     Cont(false)
                 }
+                instr::Instr::MoveEndOfWordRight => {
+                    ctx.buf.move_to_end_of_word();
+                    Cont(false)
+                }
                 instr::Instr::Noop => {
                     Cont(false)
                 },
