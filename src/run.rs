@@ -95,6 +95,15 @@ mod test {
                 Err(Error::EndOfFile)
             }
         }
+
+        fn read_seq(&mut self) -> Result<Vec<u8>, Error> {
+            // XXX return more than one byte
+            if self.input.len() > 0 {
+                Ok(vec![self.input.remove(0)])
+            } else {
+                Err(Error::EndOfFile)
+            }
+        }
     }
 
     #[test]
