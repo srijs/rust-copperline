@@ -12,7 +12,7 @@ pub enum EditMode {
     Vi,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq)]
 pub enum ViMode {
     Insert,
     Normal,
@@ -116,6 +116,10 @@ pub fn edit<'a>(ctx: &mut EditCtx<'a>) -> EditResult<Vec<u8>> {
                     Cont(false)
                 },
                 instr::Instr::NormalMode => {
+                    if ctx.vi_mode == ViMode::Insert {
+                        // cursor moves left when leaving insert mode
+                        ctx.buf.move_left();
+                    }
                     ctx.vi_mode = ViMode::Normal;
                     Cont(false)
                 }
