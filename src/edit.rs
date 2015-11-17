@@ -12,7 +12,8 @@ pub enum EditMode {
     Vi,
 }
 
-enum ViMode {
+#[derive(Copy, Clone)]
+pub enum ViMode {
     Insert,
     Normal,
 }
