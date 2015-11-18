@@ -45,6 +45,13 @@ impl Buffer {
         }
     }
 
+    pub fn replace_chars_at_cursor(&mut self, s: String) {
+        self.delete_char_right_of_cursor();
+        let insert_len = s.chars().count();
+        self.insert_chars_at_cursor(s);
+        self.pos -= insert_len;
+    }
+
     pub fn delete_char_left_of_cursor(&mut self) {
         if self.move_left() {
             self.front_buf.remove(self.pos);
@@ -351,4 +358,20 @@ fn move_to_end_of_word_whitespace_nonkeywords() {
     assert_eq!(buf.char_pos(), end_pos1);
     buf.move_to_end_of_word();
     assert_eq!(buf.char_pos(), end_pos2);
+}
+
+#[test]
+fn replace_chars_at_cursor() {
+    let mut buf = Buffer::new();
+    buf.insert_chars_at_cursor("text".to_string());
+    let pos = buf.char_pos();
+    buf.insert_chars_at_cursor(" string".to_string());
+    for _ in 0..buf.char_pos() - pos {
+        buf.move_left();
+    }
+
+    // replace should not move the cursor
+    assert_eq!(buf.char_pos(), pos);
+    buf.replace_chars_at_cursor("_".to_string());
+    assert_eq!(buf.to_string(), "text_string".to_string());
 }

@@ -16,6 +16,7 @@ pub enum EditMode {
 pub enum ViMode {
     Insert,
     Normal,
+    Replace,
 }
 
 pub struct EditCtx<'a> {
@@ -123,6 +124,10 @@ pub fn edit<'a>(ctx: &mut EditCtx<'a>) -> EditResult<Vec<u8>> {
                     ctx.vi_mode = ViMode::Normal;
                     Cont(false)
                 }
+                instr::Instr::ReplaceMode => {
+                    ctx.vi_mode = ViMode::Replace;
+                    Cont(false)
+                }
                 instr::Instr::Insert => {
                     ctx.vi_mode = ViMode::Insert;
                     Cont(false)
@@ -160,6 +165,11 @@ pub fn edit<'a>(ctx: &mut EditCtx<'a>) -> EditResult<Vec<u8>> {
                 },
                 instr::Instr::InsertAtCursor(text) => {
                     ctx.buf.insert_chars_at_cursor(text);
+                    Cont(false)
+                }
+                instr::Instr::ReplaceAtCursor(text) => {
+                    ctx.buf.replace_chars_at_cursor(text);
+                    ctx.vi_mode = ViMode::Normal;
                     Cont(false)
                 }
             };

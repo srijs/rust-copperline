@@ -13,6 +13,7 @@ pub enum Instr {
     DeleteCharRightOfCursorOrEOF,
     Substitute,
     InsertAtCursor(String),
+    ReplaceAtCursor(String),
     HistoryNext,
     HistoryPrev,
     Insert,
@@ -20,6 +21,7 @@ pub enum Instr {
     Append,
     AppendEnd,
     NormalMode,
+    ReplaceMode,
     Done,
     Cancel,
     Clear,
@@ -32,6 +34,7 @@ pub fn interpret_token(token: parser::Token, edit_mode: EditMode, vi_mode: ViMod
         EditMode::Vi => match vi_mode {
             ViMode::Insert => vi_insert_mode(token),
             ViMode::Normal => vi_normal_mode(token),
+            ViMode::Replace => vi_replace_mode(token),
         },
     }
 }
@@ -103,6 +106,7 @@ fn vi_normal_mode(token: parser::Token) -> Instr {
 
             "x"                     => Instr::DeleteCharRightOfCursor,
             "s"                     => Instr::Substitute,
+            "r"                     => Instr::ReplaceMode,
 
             "e"                     => Instr::MoveEndOfWordRight,
 
@@ -114,5 +118,11 @@ fn vi_normal_mode(token: parser::Token) -> Instr {
             _                       => Instr::Noop,
         },
         _                           => vi_common(&token),
+    }
+}
+fn vi_replace_mode(token: parser::Token) -> Instr {
+    match token {
+        parser::Token::Text(text)   => Instr::ReplaceAtCursor(text),
+        _                           => Instr::NormalMode,
     }
 }
