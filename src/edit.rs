@@ -17,18 +17,20 @@ pub struct EditCtx<'a> {
     history_cursor: Cursor<'a>,
     prompt: &'a str,
     seq: Vec<u8>,
-    enc: EncodingRef
+    enc: EncodingRef,
+    mode: EditMode,
 }
 
 impl<'a> EditCtx<'a> {
 
-    pub fn new(prompt: &'a str, history: &'a History, enc: EncodingRef) -> Self {
+    pub fn new(prompt: &'a str, history: &'a History, enc: EncodingRef, mode: EditMode) -> Self {
         EditCtx {
             buf: Buffer::new(),
             history_cursor: Cursor::new(history),
             prompt: prompt,
             seq: Vec::new(),
-            enc: enc
+            enc: enc,
+            mode: mode,
         }
     }
 

@@ -72,6 +72,7 @@ mod test {
     use super::super::edit::EditCtx;
     use super::super::history::History;
     use super::{RunIO, run_edit};
+    use edit::EditMode;
 
     pub struct TestIO {
         input: Vec<u8>,
@@ -96,7 +97,7 @@ mod test {
     fn error_eof_on_empty_input() {
         let mut io = TestIO { input: vec![], output: vec![] };
         let h = History::new();
-        let ctx = EditCtx::new("foo> ", &h, ASCII);
+        let ctx = EditCtx::new("foo> ", &h, ASCII, EditMode::Emacs);
         assert_eq!(run_edit(ctx, &mut io), Err(Error::EndOfFile));
     }
 
@@ -104,7 +105,7 @@ mod test {
     fn ok_empty_after_return() {
         let mut io = TestIO { input: vec![13], output: vec![] };
         let h = History::new();
-        let ctx = EditCtx::new("foo> ", &h, ASCII);
+        let ctx = EditCtx::new("foo> ", &h, ASCII, EditMode::Emacs);
         assert_eq!(run_edit(ctx, &mut io), Ok("".to_string()));
     }
 
@@ -112,7 +113,7 @@ mod test {
     fn ok_ascii_after_return() {
         let mut io = TestIO { input: vec![65, 66, 67, 13], output: vec![] };
         let h = History::new();
-        let ctx = EditCtx::new("foo> ", &h, ASCII);
+        let ctx = EditCtx::new("foo> ", &h, ASCII, EditMode::Emacs);
         assert_eq!(run_edit(ctx, &mut io), Ok("ABC".to_string()));
     }
 

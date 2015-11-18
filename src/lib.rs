@@ -84,7 +84,7 @@ impl Copperline {
             return Err(Error::UnsupportedTerm);
         }
         let mut io = try!(self.term.acquire_io());
-        let ctx = EditCtx::new(prompt, &self.history, enc);
+        let ctx = EditCtx::new(prompt, &self.history, enc, self.mode);
         let res = run::run(ctx, &mut io);
         drop(io);
         println!("");
