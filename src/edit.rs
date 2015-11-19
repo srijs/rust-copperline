@@ -170,7 +170,7 @@ pub fn edit<'a>(ctx: &mut EditCtx<'a>) -> EditResult<Vec<u8>> {
                     Cont(false)
                 }
                 instr::Instr::MoveEndOfWordRight => {
-                    ctx.buf.move_to_end_of_word();
+                    vi_repeat!(ctx, ctx.buf.move_to_end_of_word());
                     Cont(false)
                 }
                 instr::Instr::Substitute => {
