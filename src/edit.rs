@@ -57,6 +57,16 @@ pub enum EditResult<C> {
     Halt(Result<String, Error>)
 }
 
+macro_rules! vi_repeat {
+    ( $ctx:ident, $x:expr ) => {
+        match $ctx.vi_count {
+            0 => { $x; }
+            _ => for _ in 0..$ctx.vi_count { $x; }
+        }
+        $ctx.vi_count = 0;
+    };
+}
+
 pub fn edit<'a>(ctx: &mut EditCtx<'a>) -> EditResult<Vec<u8>> {
     use self::EditResult::*;
 
