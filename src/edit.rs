@@ -27,6 +27,7 @@ pub struct EditCtx<'a> {
     enc: EncodingRef,
     mode: EditMode,
     vi_mode: ViMode,
+    vi_count: u32,
 }
 
 impl<'a> EditCtx<'a> {
@@ -41,6 +42,7 @@ impl<'a> EditCtx<'a> {
             mode: mode,
             // always start in insert mode
             vi_mode: ViMode::Insert,
+            vi_count: 0,
         }
     }
 
@@ -122,6 +124,7 @@ pub fn edit<'a>(ctx: &mut EditCtx<'a>) -> EditResult<Vec<u8>> {
                         ctx.buf.move_left();
                     }
                     ctx.vi_mode = ViMode::Normal;
+                    ctx.vi_count = 0;
                     Cont(false)
                 }
                 instr::Instr::ReplaceMode => {
@@ -145,6 +148,15 @@ pub fn edit<'a>(ctx: &mut EditCtx<'a>) -> EditResult<Vec<u8>> {
                 instr::Instr::AppendEnd => {
                     ctx.vi_mode = ViMode::Insert;
                     ctx.buf.move_end();
+                    Cont(false)
+                }
+                instr::Instr::Digit(i) => {
+                    match (ctx.vi_count, i) {
+                        // if count is 0, then 0 moves to the start of a line
+                        (0, 0) => ctx.buf.move_start(),
+                        // otherwise add a digit to the count
+                        (_, i) => ctx.vi_count = ctx.vi_count * 10 + i,
+                    }
                     Cont(false)
                 }
                 instr::Instr::MoveEndOfWordRight => {

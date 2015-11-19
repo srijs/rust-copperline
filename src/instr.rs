@@ -22,6 +22,7 @@ pub enum Instr {
     AppendEnd,
     NormalMode,
     ReplaceMode,
+    Digit(u32),
     Done,
     Cancel,
     Clear,
@@ -101,7 +102,7 @@ fn vi_normal_mode(token: parser::Token) -> Instr {
             "j"                     => Instr::HistoryNext,
             "k"                     => Instr::HistoryPrev,
             "l"                     => Instr::MoveCursorRight,
-            "0"                     => Instr::MoveCursorStart,
+            "0"                     => Instr::Digit(0),
             "$"                     => Instr::MoveCursorEnd,
 
             "x"                     => Instr::DeleteCharRightOfCursor,
@@ -114,6 +115,16 @@ fn vi_normal_mode(token: parser::Token) -> Instr {
             "A"                     => Instr::AppendEnd,
             "i"                     => Instr::Insert,
             "I"                     => Instr::InsertStart,
+
+            "1"                     => Instr::Digit(1),
+            "2"                     => Instr::Digit(2),
+            "3"                     => Instr::Digit(3),
+            "4"                     => Instr::Digit(4),
+            "5"                     => Instr::Digit(5),
+            "6"                     => Instr::Digit(6),
+            "7"                     => Instr::Digit(7),
+            "8"                     => Instr::Digit(8),
+            "9"                     => Instr::Digit(9),
 
             _                       => Instr::Noop,
         },
