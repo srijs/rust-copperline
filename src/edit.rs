@@ -125,17 +125,21 @@ pub fn edit<'a>(ctx: &mut EditCtx<'a>) -> EditResult<Vec<u8>> {
                     Cont(false)
                 },
                 instr::Instr::HistoryPrev => {
-                    if ctx.history_cursor.incr() {
-                        ctx.buf.swap()
-                    }
-                    ctx.history_cursor.get().map(|s| ctx.buf.replace(s));
+                    vi_repeat!(ctx, {
+                        if ctx.history_cursor.incr() {
+                            ctx.buf.swap()
+                        }
+                        ctx.history_cursor.get().map(|s| ctx.buf.replace(s));
+                    });
                     Cont(false)
                 },
                 instr::Instr::HistoryNext => {
-                    if ctx.history_cursor.decr() {
-                        ctx.buf.swap()
-                    }
-                    ctx.history_cursor.get().map(|s| ctx.buf.replace(s));
+                    vi_repeat!(ctx, {
+                        if ctx.history_cursor.decr() {
+                            ctx.buf.swap()
+                        }
+                        ctx.history_cursor.get().map(|s| ctx.buf.replace(s));
+                    });
                     Cont(false)
                 },
                 instr::Instr::NormalMode => {
