@@ -200,7 +200,11 @@ pub fn edit<'a>(ctx: &mut EditCtx<'a>) -> EditResult<Vec<u8>> {
                     Cont(false)
                 }
                 instr::Instr::ReplaceAtCursor(text) => {
-                    ctx.buf.replace_chars_at_cursor(text);
+                    vi_repeat!(
+                        ctx,
+                        ctx.buf.replace_chars_at_cursor(text.clone()),
+                        ctx.buf.move_right()
+                    );
                     ctx.vi_mode = ViMode::Normal;
                     Cont(false)
                 }
