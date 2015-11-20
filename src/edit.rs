@@ -94,11 +94,11 @@ pub fn edit<'a>(ctx: &mut EditCtx<'a>) -> EditResult<Vec<u8>> {
                     Halt(Ok(ctx.buf.drain()))
                 },
                 instr::Instr::DeleteCharLeftOfCursor => {
-                    ctx.buf.delete_char_left_of_cursor();
+                    vi_repeat!(ctx, ctx.buf.delete_char_left_of_cursor());
                     Cont(false)
                 },
                 instr::Instr::DeleteCharRightOfCursor => {
-                    ctx.buf.delete_char_right_of_cursor();
+                    vi_repeat!(ctx, ctx.buf.delete_char_right_of_cursor());
                     Cont(false)
                 },
                 instr::Instr::DeleteCharRightOfCursorOrEOF => {
@@ -109,11 +109,11 @@ pub fn edit<'a>(ctx: &mut EditCtx<'a>) -> EditResult<Vec<u8>> {
                     }
                 },
                 instr::Instr::MoveCursorLeft => {
-                    ctx.buf.move_left();
+                    vi_repeat!(ctx, ctx.buf.move_left());
                     Cont(false)
                 },
                 instr::Instr::MoveCursorRight => {
-                    ctx.buf.move_right();
+                    vi_repeat!(ctx, ctx.buf.move_right());
                     Cont(false)
                 },
                 instr::Instr::MoveCursorStart => {
@@ -184,7 +184,7 @@ pub fn edit<'a>(ctx: &mut EditCtx<'a>) -> EditResult<Vec<u8>> {
                     Cont(false)
                 }
                 instr::Instr::Substitute => {
-                    ctx.buf.delete_char_right_of_cursor();
+                    vi_repeat!(ctx, ctx.buf.delete_char_right_of_cursor());
                     ctx.vi_mode = ViMode::Insert;
                     Cont(false)
                 }
