@@ -65,6 +65,16 @@ macro_rules! vi_repeat {
         }
         $ctx.vi_count = 0;
     };
+    ( $ctx:ident, $operation:expr, $step:expr ) => {
+        match $ctx.vi_count {
+            0 => { $operation; }
+            _ => {
+                $operation;
+                for _ in 1..$ctx.vi_count { $step; $operation; }
+            }
+        }
+        $ctx.vi_count = 0;
+    };
 }
 
 pub fn edit<'a>(ctx: &mut EditCtx<'a>) -> EditResult<Vec<u8>> {
