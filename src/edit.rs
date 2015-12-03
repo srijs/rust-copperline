@@ -12,6 +12,11 @@ pub enum EditMode {
     Vi,
 }
 
+enum ViMode {
+    Insert,
+    Normal,
+}
+
 pub struct EditCtx<'a> {
     buf: Buffer,
     history_cursor: Cursor<'a>,
@@ -19,6 +24,7 @@ pub struct EditCtx<'a> {
     seq: Vec<u8>,
     enc: EncodingRef,
     mode: EditMode,
+    vi_mode: ViMode,
 }
 
 impl<'a> EditCtx<'a> {
@@ -31,6 +37,8 @@ impl<'a> EditCtx<'a> {
             seq: Vec::new(),
             enc: enc,
             mode: mode,
+            // always start in insert mode
+            vi_mode: ViMode::Insert,
         }
     }
 
