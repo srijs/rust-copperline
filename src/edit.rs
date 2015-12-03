@@ -66,7 +66,7 @@ pub fn edit<'a>(ctx: &mut EditCtx<'a>) -> EditResult<Vec<u8>> {
         },
         Err(ParseError::Incomplete) => Cont(false),
         Ok(ParseSuccess(token, len)) => {
-            let res = match instr::interpret_token(token) {
+            let res = match instr::interpret_token(token, ctx.mode, ctx.vi_mode) {
                 instr::Instr::Done => {
                     Halt(Ok(ctx.buf.drain()))
                 },
@@ -115,6 +115,29 @@ pub fn edit<'a>(ctx: &mut EditCtx<'a>) -> EditResult<Vec<u8>> {
                     ctx.history_cursor.get().map(|s| ctx.buf.replace(s));
                     Cont(false)
                 },
+                instr::Instr::NormalMode => {
+                    ctx.vi_mode = ViMode::Normal;
+                    Cont(false)
+                }
+                instr::Instr::Insert => {
+                    ctx.vi_mode = ViMode::Insert;
+                    Cont(false)
+                }
+                instr::Instr::InsertStart => {
+                    ctx.vi_mode = ViMode::Insert;
+                    ctx.buf.move_start();
+                    Cont(false)
+                }
+                instr::Instr::Append => {
+                    ctx.vi_mode = ViMode::Insert;
+                    ctx.buf.move_right();
+                    Cont(false)
+                }
+                instr::Instr::AppendEnd => {
+                    ctx.vi_mode = ViMode::Insert;
+                    ctx.buf.move_end();
+                    Cont(false)
+                }
                 instr::Instr::Noop => {
                     Cont(false)
                 },
