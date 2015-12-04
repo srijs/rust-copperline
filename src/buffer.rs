@@ -110,10 +110,14 @@ impl Buffer {
     }
 
     pub fn move_word(&mut self) {
-        self.vi_move_word();
+        self.vi_move_word(ViMoveMode::Keyword);
     }
 
-    fn vi_move_word(&mut self) {
+    pub fn move_word_ws(&mut self) {
+        self.vi_move_word(ViMoveMode::Whitespace);
+    }
+
+    fn vi_move_word(&mut self, move_mode: ViMoveMode) {
         enum State {
             Whitespace,
             Keyword,
@@ -142,12 +146,16 @@ impl Buffer {
                 },
                 State::Keyword => match c {
                     c if c.is_whitespace() => state = State::Whitespace,
-                    c if !is_vi_keyword(c) => return,
+                    c if move_mode == ViMoveMode::Keyword
+                        && !is_vi_keyword(c)
+                    => return,
                     _ => {}
                 },
                 State::NonKeyword => match c {
                     c if c.is_whitespace() => state = State::Whitespace,
-                    c if is_vi_keyword(c) => return,
+                    c if move_mode == ViMoveMode::Keyword
+                        && is_vi_keyword(c)
+                    => return,
                     _ => {}
                 },
             }
@@ -570,6 +578,12 @@ fn move_word_simple() {
     assert_eq!(buf.char_pos(), pos1);
     buf.move_word();
     assert_eq!(buf.char_pos(), pos2);
+
+    buf.move_start();
+    buf.move_word_ws();
+    assert_eq!(buf.char_pos(), pos1);
+    buf.move_word_ws();
+    assert_eq!(buf.char_pos(), pos2);
 }
 
 #[test]
@@ -584,6 +598,12 @@ fn move_word_whitespace() {
     buf.move_word();
     assert_eq!(buf.char_pos(), pos1);
     buf.move_word();
+    assert_eq!(buf.char_pos(), pos2);
+
+    buf.move_start();
+    buf.move_word_ws();
+    assert_eq!(buf.char_pos(), pos1);
+    buf.move_word_ws();
     assert_eq!(buf.char_pos(), pos2);
 }
 
@@ -600,7 +620,12 @@ fn move_word_nonkeywords() {
     assert_eq!(buf.char_pos(), pos1);
     buf.move_word();
     assert_eq!(buf.char_pos(), pos2);
+
+    buf.move_start();
+    buf.move_word_ws();
+    assert_eq!(buf.char_pos(), pos2);
 }
+
 #[test]
 fn move_word_whitespace_nonkeywords() {
     let mut buf = Buffer::new();
@@ -609,10 +634,17 @@ fn move_word_whitespace_nonkeywords() {
     buf.insert_chars_at_cursor("...".to_string());
     let pos2 = buf.char_pos();
     buf.insert_chars_at_cursor("word".to_string());
+    let pos3 = buf.char_pos();
     buf.move_start();
 
     buf.move_word();
     assert_eq!(buf.char_pos(), pos1);
     buf.move_word();
     assert_eq!(buf.char_pos(), pos2);
+
+    buf.move_start();
+    buf.move_word_ws();
+    assert_eq!(buf.char_pos(), pos1);
+    buf.move_word_ws();
+    assert_eq!(buf.char_pos(), pos3);
 }
