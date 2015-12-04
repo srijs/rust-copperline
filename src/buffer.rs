@@ -109,6 +109,47 @@ impl Buffer {
         self.pos = 0;
     }
 
+    pub fn move_word(&mut self) {
+        enum State {
+            Whitespace,
+            Keyword,
+            NonKeyword,
+        };
+
+        let mut state = match self.cursor().cp_after() {
+            None => return,
+            Some(c) => match c {
+                c if c.is_whitespace() => State::Whitespace,
+                c if is_vi_keyword(c) => State::Keyword,
+                _ => State::NonKeyword,
+            },
+        };
+
+        while self.move_right() {
+            let c = match self.cursor().cp_after() {
+                Some(c) => c,
+                _ => return,
+            };
+
+            match state {
+                State::Whitespace => match c {
+                    c if c.is_whitespace() => {},
+                    _ => return,
+                },
+                State::Keyword => match c {
+                    c if c.is_whitespace() => state = State::Whitespace,
+                    c if !is_vi_keyword(c) => return,
+                    _ => {}
+                },
+                State::NonKeyword => match c {
+                    c if c.is_whitespace() => state = State::Whitespace,
+                    c if is_vi_keyword(c) => return,
+                    _ => {}
+                },
+            }
+        }
+    }
+
     pub fn move_end(&mut self) {
         self.pos = self.front_buf.len();
     }
@@ -511,3 +552,63 @@ fn move_to_end_of_word_ws_whitespace_nonkeywords() {
     assert_eq!(buf.char_pos(), end_pos2);
 }
 
+#[test]
+fn move_word_simple() {
+    let mut buf = Buffer::new();
+    buf.insert_chars_at_cursor("here ".to_string());
+    let pos1 = buf.char_pos();
+    buf.insert_chars_at_cursor("are ".to_string());
+    let pos2 = buf.char_pos();
+    buf.insert_chars_at_cursor("some words".to_string());
+    buf.move_start();
+
+    buf.move_word();
+    assert_eq!(buf.char_pos(), pos1);
+    buf.move_word();
+    assert_eq!(buf.char_pos(), pos2);
+}
+
+#[test]
+fn move_word_whitespace() {
+    let mut buf = Buffer::new();
+    buf.insert_chars_at_cursor("   ".to_string());
+    let pos1 = buf.char_pos();
+    buf.insert_chars_at_cursor("word".to_string());
+    let pos2 = buf.char_pos();
+    buf.move_start();
+
+    buf.move_word();
+    assert_eq!(buf.char_pos(), pos1);
+    buf.move_word();
+    assert_eq!(buf.char_pos(), pos2);
+}
+
+#[test]
+fn move_word_nonkeywords() {
+    let mut buf = Buffer::new();
+    buf.insert_chars_at_cursor("...".to_string());
+    let pos1 = buf.char_pos();
+    buf.insert_chars_at_cursor("word".to_string());
+    let pos2 = buf.char_pos();
+    buf.move_start();
+
+    buf.move_word();
+    assert_eq!(buf.char_pos(), pos1);
+    buf.move_word();
+    assert_eq!(buf.char_pos(), pos2);
+}
+#[test]
+fn move_word_whitespace_nonkeywords() {
+    let mut buf = Buffer::new();
+    buf.insert_chars_at_cursor("...   ".to_string());
+    let pos1 = buf.char_pos();
+    buf.insert_chars_at_cursor("...".to_string());
+    let pos2 = buf.char_pos();
+    buf.insert_chars_at_cursor("word".to_string());
+    buf.move_start();
+
+    buf.move_word();
+    assert_eq!(buf.char_pos(), pos1);
+    buf.move_word();
+    assert_eq!(buf.char_pos(), pos2);
+}
