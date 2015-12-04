@@ -114,6 +114,10 @@ impl Buffer {
     }
 
     pub fn move_to_end_of_word(&mut self) {
+        self.vi_move_word_end();
+    }
+
+    fn vi_move_word_end(&mut self, move_mode: ViMoveMode) {
         enum State {
             Whitespace,
             EndOnWord,
@@ -133,10 +137,13 @@ impl Buffer {
 
             match state {
                 State::Whitespace => match c {
+                    // skip initial whitespace
                     c if c.is_whitespace() => {},
+                    // if we are in keyword mode and found a keyword, stop on word
                     c if is_vi_keyword(c) => {
                         state = State::EndOnWord;
                     },
+                    // in keyword mode, found non-whitespace non-keyword, stop on anything
                     _ => {
                         state = State::EndOnOther;
                     }
