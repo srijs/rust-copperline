@@ -174,6 +174,14 @@ impl Buffer {
         self.vi_move_word_end(ViMoveMode::Whitespace, ViMoveDir::Right);
     }
 
+    pub fn move_word_back(&mut self) {
+        self.vi_move_word_end(ViMoveMode::Keyword, ViMoveDir::Left);
+    }
+
+    pub fn move_word_ws_back(&mut self) {
+        self.vi_move_word_end(ViMoveMode::Whitespace, ViMoveDir::Left);
+    }
+
     fn vi_move_word_end(&mut self, move_mode: ViMoveMode, direction: ViMoveDir) {
         enum State {
             Whitespace,
@@ -667,4 +675,63 @@ fn move_word_whitespace_nonkeywords() {
     assert_eq!(buf.char_pos(), pos1);
     buf.move_word_ws();
     assert_eq!(buf.char_pos(), pos3);
+}
+
+#[test]
+fn move_word_and_back() {
+    let mut buf = Buffer::new();
+    buf.insert_chars_at_cursor("here ".to_string());
+    let pos1 = buf.char_pos();
+    buf.insert_chars_at_cursor("are ".to_string());
+    let pos2 = buf.char_pos();
+    buf.insert_chars_at_cursor("some".to_string());
+    let pos3 = buf.char_pos();
+    buf.insert_chars_at_cursor("... ".to_string());
+    let pos4 = buf.char_pos();
+    buf.insert_chars_at_cursor("words".to_string());
+    let pos5 = buf.char_pos();
+
+    // make sure move_word() and move_word_back() are reflections of eachother
+
+    buf.move_start();
+    buf.move_word();
+    assert_eq!(buf.char_pos(), pos1);
+    buf.move_word();
+    assert_eq!(buf.char_pos(), pos2);
+    buf.move_word();
+    assert_eq!(buf.char_pos(), pos3);
+    buf.move_word();
+    assert_eq!(buf.char_pos(), pos4);
+    buf.move_word();
+    assert_eq!(buf.char_pos(), pos5);
+
+    buf.move_word_back();
+    assert_eq!(buf.char_pos(), pos4);
+    buf.move_word_back();
+    assert_eq!(buf.char_pos(), pos3);
+    buf.move_word_back();
+    assert_eq!(buf.char_pos(), pos2);
+    buf.move_word_back();
+    assert_eq!(buf.char_pos(), pos1);
+    buf.move_word_back();
+    assert_eq!(buf.char_pos(), 0);
+
+    buf.move_start();
+    buf.move_word_ws();
+    assert_eq!(buf.char_pos(), pos1);
+    buf.move_word_ws();
+    assert_eq!(buf.char_pos(), pos2);
+    buf.move_word_ws();
+    assert_eq!(buf.char_pos(), pos4);
+    buf.move_word_ws();
+    assert_eq!(buf.char_pos(), pos5);
+
+    buf.move_word_ws_back();
+    assert_eq!(buf.char_pos(), pos4);
+    buf.move_word_ws_back();
+    assert_eq!(buf.char_pos(), pos2);
+    buf.move_word_ws_back();
+    assert_eq!(buf.char_pos(), pos1);
+    buf.move_word_ws_back();
+    assert_eq!(buf.char_pos(), 0);
 }
