@@ -204,6 +204,11 @@ pub fn edit<'a>(ctx: &mut EditCtx<'a>) -> EditResult<Vec<u8>> {
                     ctx.buf.exclude_eol();
                     Cont(false)
                 }
+                instr::Instr::MoveWordWsRight => {
+                    vi_repeat!(ctx, ctx.buf.move_word_ws());
+                    ctx.buf.exclude_eol();
+                    Cont(false)
+                }
                 instr::Instr::Substitute => {
                     vi_repeat!(ctx, ctx.buf.delete_char_right_of_cursor());
                     ctx.vi_mode = ViMode::Insert;
