@@ -9,6 +9,7 @@ pub enum Instr {
     MoveCursorEnd,
     MoveEndOfWordRight,
     MoveEndOfWordWsRight,
+    MoveWordRight,
     DeleteCharLeftOfCursor,
     DeleteCharRightOfCursor,
     DeleteCharRightOfCursorOrEOF,
@@ -112,6 +113,7 @@ fn vi_normal_mode(token: parser::Token) -> Instr {
 
             "e"                     => Instr::MoveEndOfWordRight,
             "E"                     => Instr::MoveEndOfWordWsRight,
+            "w"                     => Instr::MoveWordRight,
 
             "a"                     => Instr::Append,
             "A"                     => Instr::AppendEnd,
