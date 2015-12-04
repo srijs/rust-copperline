@@ -114,7 +114,11 @@ impl Buffer {
     }
 
     pub fn move_to_end_of_word(&mut self) {
-        self.vi_move_word_end();
+        self.vi_move_word_end(ViMoveMode::Keyword);
+    }
+
+    pub fn move_to_end_of_word_ws(&mut self) {
+        self.vi_move_word_end(ViMoveMode::Whitespace);
     }
 
     fn vi_move_word_end(&mut self, move_mode: ViMoveMode) {
@@ -122,6 +126,7 @@ impl Buffer {
             Whitespace,
             EndOnWord,
             EndOnOther,
+            EndOnWhitespace,
         };
 
         let mut state = State::Whitespace;
@@ -140,15 +145,25 @@ impl Buffer {
                     // skip initial whitespace
                     c if c.is_whitespace() => {},
                     // if we are in keyword mode and found a keyword, stop on word
-                    c if is_vi_keyword(c) => {
+                    c if move_mode == ViMoveMode::Keyword
+                        && is_vi_keyword(c) =>
+                    {
                         state = State::EndOnWord;
                     },
+                    // not in keyword mode, stop on whitespace
+                    _ if move_mode == ViMoveMode::Whitespace => {
+                        state = State::EndOnWhitespace;
+                    }
                     // in keyword mode, found non-whitespace non-keyword, stop on anything
                     _ => {
                         state = State::EndOnOther;
                     }
                 },
                 State::EndOnWord if !is_vi_keyword(c) => {
+                    self.move_left();
+                    return;
+                },
+                State::EndOnWhitespace if c.is_whitespace() => {
                     self.move_left();
                     return;
                 },
@@ -197,6 +212,12 @@ impl Buffer {
         self.pos = 0;
         s
     }
+}
+
+#[derive(PartialEq)]
+enum ViMoveMode {
+    Keyword,
+    Whitespace,
 }
 
 /// All alphanumeric characters and _ are considered valid for keywords in vi by default.
