@@ -167,14 +167,14 @@ impl Buffer {
     }
 
     pub fn move_to_end_of_word(&mut self) {
-        self.vi_move_word_end(ViMoveMode::Keyword);
+        self.vi_move_word_end(ViMoveMode::Keyword, ViMoveDir::Right);
     }
 
     pub fn move_to_end_of_word_ws(&mut self) {
-        self.vi_move_word_end(ViMoveMode::Whitespace);
+        self.vi_move_word_end(ViMoveMode::Whitespace, ViMoveDir::Right);
     }
 
-    fn vi_move_word_end(&mut self, move_mode: ViMoveMode) {
+    fn vi_move_word_end(&mut self, move_mode: ViMoveMode, direction: ViMoveDir) {
         enum State {
             Whitespace,
             EndOnWord,
@@ -184,7 +184,21 @@ impl Buffer {
 
         let mut state = State::Whitespace;
 
-        while self.move_right() {
+        let advance = |buf: &mut Self| {
+            match direction {
+                ViMoveDir::Right => buf.move_right(),
+                ViMoveDir::Left => buf.move_left(),
+            }
+        };
+
+        let go_back = |buf: &mut Self| {
+            match direction {
+                ViMoveDir::Right => buf.move_left(),
+                ViMoveDir::Left => buf.move_right(),
+            }
+        };
+
+        while advance(self) {
 
             // XXX maybe use for self.cursor().slice_after().char_indicies()
             // XXX should we use self.cursor().after()?
@@ -213,15 +227,15 @@ impl Buffer {
                     }
                 },
                 State::EndOnWord if !is_vi_keyword(c) => {
-                    self.move_left();
+                    go_back(self);
                     return;
                 },
                 State::EndOnWhitespace if c.is_whitespace() => {
-                    self.move_left();
+                    go_back(self);
                     return;
                 },
                 State::EndOnOther if c.is_whitespace() || is_vi_keyword(c) => {
-                    self.move_left();
+                    go_back(self);
                     return;
                 },
                 _ => {},
@@ -272,6 +286,12 @@ enum ViMoveMode {
     Keyword,
     Whitespace,
 }
+
+enum ViMoveDir {
+    Left,
+    Right,
+}
+
 
 /// All alphanumeric characters and _ are considered valid for keywords in vi by default.
 fn is_vi_keyword(c: char) -> bool {
