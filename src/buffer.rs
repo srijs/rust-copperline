@@ -104,6 +104,15 @@ impl Buffer {
          UnicodeWidthStr::width(self.cursor().slice_before())
     }
 
+    fn move_to_pos(&mut self, pos: usize) {
+        if pos > self.front_buf.len() {
+            self.move_end();
+        }
+        else {
+            self.pos = pos;
+        }
+    }
+
     pub fn get_line(&self, prompt: &str, clear: bool) -> Vec<u8> {
         let mut line = Builder::new();
         if clear {
@@ -188,4 +197,27 @@ fn move_and_insert_cjk() {
     buf.move_left();
     buf.delete_char_left_of_cursor();
     assert_eq!(buf.to_string(), "乫䨻䦴憛".to_string());
+}
+
+#[test]
+fn move_to_pos() {
+    let mut buf = Buffer::new();
+    buf.insert_chars_at_cursor("pos".to_string());
+    let pos = buf.char_pos();
+    buf.insert_chars_at_cursor("pos".to_string());
+
+    assert!(buf.char_pos() != pos);
+    buf.move_to_pos(pos);
+    assert_eq!(buf.char_pos(), pos);
+}
+
+#[test]
+fn move_to_pos_past_end() {
+    let mut buf = Buffer::new();
+    buf.insert_chars_at_cursor("pos".to_string());
+    let end_pos = buf.char_pos();
+
+    assert_eq!(buf.char_pos(), end_pos);
+    buf.move_to_pos(10_000);
+    assert_eq!(buf.char_pos(), end_pos);
 }
