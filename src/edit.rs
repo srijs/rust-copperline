@@ -114,6 +114,9 @@ pub fn edit<'a>(ctx: &mut EditCtx<'a>) -> EditResult<Vec<u8>> {
                 },
                 instr::Instr::MoveCursorRight => {
                     vi_repeat!(ctx, ctx.buf.move_right());
+                    if ctx.vi_mode == ViMode::Normal {
+                        ctx.buf.exclude_eol();
+                    }
                     Cont(false)
                 },
                 instr::Instr::MoveCursorStart => {
@@ -122,6 +125,9 @@ pub fn edit<'a>(ctx: &mut EditCtx<'a>) -> EditResult<Vec<u8>> {
                 },
                 instr::Instr::MoveCursorEnd => {
                     ctx.buf.move_end();
+                    if ctx.vi_mode == ViMode::Normal {
+                        ctx.buf.exclude_eol();
+                    }
                     Cont(false)
                 },
                 instr::Instr::HistoryPrev => {
@@ -185,6 +191,7 @@ pub fn edit<'a>(ctx: &mut EditCtx<'a>) -> EditResult<Vec<u8>> {
                 }
                 instr::Instr::MoveEndOfWordRight => {
                     vi_repeat!(ctx, ctx.buf.move_to_end_of_word());
+                    ctx.buf.exclude_eol();
                     Cont(false)
                 }
                 instr::Instr::Substitute => {
@@ -207,7 +214,10 @@ pub fn edit<'a>(ctx: &mut EditCtx<'a>) -> EditResult<Vec<u8>> {
                     vi_repeat!(
                         ctx,
                         ctx.buf.replace_chars_at_cursor(text.clone()),
-                        ctx.buf.move_right()
+                        {
+                            ctx.buf.move_right();
+                            ctx.buf.exclude_eol();
+                        }
                     );
                     ctx.vi_mode = ViMode::Normal;
                     Cont(false)
