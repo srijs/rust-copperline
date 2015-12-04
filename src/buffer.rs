@@ -441,9 +441,7 @@ fn move_to_end_of_word_ws_simple() {
     buf.insert_chars_at_cursor(" som".to_string());
     let end_pos = buf.char_pos();
     buf.insert_chars_at_cursor("e words".to_string());
-    for _ in 0..buf.char_pos() - start_pos {
-        buf.move_left();
-    }
+    buf.move_to_pos(start_pos);
 
     buf.move_to_end_of_word_ws();
     assert_eq!(buf.char_pos(), end_pos);
@@ -459,9 +457,7 @@ fn move_to_end_of_word_ws_comma() {
     buf.insert_chars_at_cursor(", som".to_string());
     let end_pos2 = buf.char_pos();
     buf.insert_chars_at_cursor("e words".to_string());
-    for _ in 0..buf.char_pos() - start_pos {
-        buf.move_left();
-    }
+    buf.move_to_pos(start_pos);
 
     buf.move_to_end_of_word_ws();
     assert_eq!(buf.char_pos(), end_pos1);
@@ -477,9 +473,7 @@ fn move_to_end_of_word_ws_nonkeywords() {
     buf.insert_chars_at_cursor("e,,,,som".to_string());
     let end_pos = buf.char_pos();
     buf.insert_chars_at_cursor("e words".to_string());
-    for _ in 0..buf.char_pos() - start_pos {
-        buf.move_left();
-    }
+    buf.move_to_pos(start_pos);
 
     buf.move_to_end_of_word_ws();
     assert_eq!(buf.char_pos(), end_pos);
@@ -493,9 +487,7 @@ fn move_to_end_of_word_ws_whitespace() {
     buf.insert_chars_at_cursor("      som".to_string());
     let end_pos = buf.char_pos();
     buf.insert_chars_at_cursor("e words".to_string());
-    for _ in 0..buf.char_pos() - start_pos {
-        buf.move_left();
-    }
+    buf.move_to_pos(start_pos);
 
     buf.move_to_end_of_word_ws();
     assert_eq!(buf.char_pos(), end_pos);
@@ -511,9 +503,7 @@ fn move_to_end_of_word_ws_whitespace_nonkeywords() {
     buf.insert_chars_at_cursor(", som".to_string());
     let end_pos2 = buf.char_pos();
     buf.insert_chars_at_cursor("e words".to_string());
-    for _ in 0..buf.char_pos() - start_pos {
-        buf.move_left();
-    }
+    buf.move_to_pos(start_pos);
 
     buf.move_to_end_of_word_ws();
     assert_eq!(buf.char_pos(), end_pos1);
