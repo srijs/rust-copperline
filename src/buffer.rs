@@ -99,6 +99,12 @@ impl Buffer {
         }
     }
 
+    /// If the cursor is one past the end of the line, move one character to the left.
+    pub fn exclude_eol(&mut self) {
+        self.move_right();
+        self.move_left();
+    }
+
     pub fn move_start(&mut self) {
         self.pos = 0;
     }
@@ -374,4 +380,27 @@ fn replace_chars_at_cursor() {
     assert_eq!(buf.char_pos(), pos);
     buf.replace_chars_at_cursor("_".to_string());
     assert_eq!(buf.to_string(), "text_string".to_string());
+}
+
+#[test]
+fn exclude_eol() {
+    let mut buf = Buffer::new();
+    buf.insert_chars_at_cursor("text".to_string());
+    let end = buf.char_pos();
+    buf.move_left();
+
+    let target = buf.char_pos();
+    buf.move_right();
+    buf.move_right();
+
+    // should be at the end of the string
+    assert_eq!(buf.char_pos(), end);
+
+    // a call to exclude_eol() should move the cursor
+    buf.exclude_eol();
+    assert_eq!(buf.char_pos(), target);
+
+    // further calls should not move the cursor
+    buf.exclude_eol();
+    assert_eq!(buf.char_pos(), target);
 }
