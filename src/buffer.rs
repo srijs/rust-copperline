@@ -432,3 +432,92 @@ fn exclude_eol() {
     buf.exclude_eol();
     assert_eq!(buf.char_pos(), target);
 }
+
+#[test]
+fn move_to_end_of_word_ws_simple() {
+    let mut buf = Buffer::new();
+    buf.insert_chars_at_cursor("here are".to_string());
+    let start_pos = buf.char_pos();
+    buf.insert_chars_at_cursor(" som".to_string());
+    let end_pos = buf.char_pos();
+    buf.insert_chars_at_cursor("e words".to_string());
+    for _ in 0..buf.char_pos() - start_pos {
+        buf.move_left();
+    }
+
+    buf.move_to_end_of_word_ws();
+    assert_eq!(buf.char_pos(), end_pos);
+}
+
+#[test]
+fn move_to_end_of_word_ws_comma() {
+    let mut buf = Buffer::new();
+    buf.insert_chars_at_cursor("here ar".to_string());
+    let start_pos = buf.char_pos();
+    buf.insert_char_at_cursor('e');
+    let end_pos1 = buf.char_pos();
+    buf.insert_chars_at_cursor(", som".to_string());
+    let end_pos2 = buf.char_pos();
+    buf.insert_chars_at_cursor("e words".to_string());
+    for _ in 0..buf.char_pos() - start_pos {
+        buf.move_left();
+    }
+
+    buf.move_to_end_of_word_ws();
+    assert_eq!(buf.char_pos(), end_pos1);
+    buf.move_to_end_of_word_ws();
+    assert_eq!(buf.char_pos(), end_pos2);
+}
+
+#[test]
+fn move_to_end_of_word_ws_nonkeywords() {
+    let mut buf = Buffer::new();
+    buf.insert_chars_at_cursor("here ar".to_string());
+    let start_pos = buf.char_pos();
+    buf.insert_chars_at_cursor("e,,,,som".to_string());
+    let end_pos = buf.char_pos();
+    buf.insert_chars_at_cursor("e words".to_string());
+    for _ in 0..buf.char_pos() - start_pos {
+        buf.move_left();
+    }
+
+    buf.move_to_end_of_word_ws();
+    assert_eq!(buf.char_pos(), end_pos);
+}
+
+#[test]
+fn move_to_end_of_word_ws_whitespace() {
+    let mut buf = Buffer::new();
+    buf.insert_chars_at_cursor("here are".to_string());
+    let start_pos = buf.char_pos();
+    buf.insert_chars_at_cursor("      som".to_string());
+    let end_pos = buf.char_pos();
+    buf.insert_chars_at_cursor("e words".to_string());
+    for _ in 0..buf.char_pos() - start_pos {
+        buf.move_left();
+    }
+
+    buf.move_to_end_of_word_ws();
+    assert_eq!(buf.char_pos(), end_pos);
+}
+
+#[test]
+fn move_to_end_of_word_ws_whitespace_nonkeywords() {
+    let mut buf = Buffer::new();
+    buf.insert_chars_at_cursor("here ar".to_string());
+    let start_pos = buf.char_pos();
+    buf.insert_chars_at_cursor("e   ,,,".to_string());
+    let end_pos1 = buf.char_pos();
+    buf.insert_chars_at_cursor(", som".to_string());
+    let end_pos2 = buf.char_pos();
+    buf.insert_chars_at_cursor("e words".to_string());
+    for _ in 0..buf.char_pos() - start_pos {
+        buf.move_left();
+    }
+
+    buf.move_to_end_of_word_ws();
+    assert_eq!(buf.char_pos(), end_pos1);
+    buf.move_to_end_of_word_ws();
+    assert_eq!(buf.char_pos(), end_pos2);
+}
+
