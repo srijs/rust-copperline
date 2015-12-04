@@ -110,6 +110,10 @@ impl Buffer {
     }
 
     pub fn move_word(&mut self) {
+        self.vi_move_word();
+    }
+
+    fn vi_move_word(&mut self) {
         enum State {
             Whitespace,
             Keyword,
