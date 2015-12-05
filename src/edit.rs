@@ -1,5 +1,6 @@
 use encoding::types::EncodingRef;
 
+use std::u32;
 use error::Error;
 use history::{Cursor, History};
 use buffer::Buffer;
@@ -203,7 +204,11 @@ pub fn edit<'a>(ctx: &mut EditCtx<'a>) -> EditResult<Vec<u8>> {
                         // if count is 0, then 0 moves to the start of a line
                         (0, 0) => ctx.buf.move_start(),
                         // otherwise add a digit to the count
-                        (_, i) => ctx.vi_count = ctx.vi_count * 10 + i,
+                        (_, i) => {
+                            if ctx.vi_count <= (u32::MAX - i) / 10 {
+                                ctx.vi_count = ctx.vi_count * 10 + i
+                            }
+                        }
                     }
                     Cont(false)
                 }
