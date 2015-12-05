@@ -120,10 +120,12 @@ pub fn edit<'a>(ctx: &mut EditCtx<'a>) -> EditResult<Vec<u8>> {
                     Cont(false)
                 },
                 instr::Instr::MoveCursorStart => {
+                    ctx.vi_count = 0;
                     ctx.buf.move_start();
                     Cont(false)
                 },
                 instr::Instr::MoveCursorEnd => {
+                    ctx.vi_count = 0;
                     ctx.buf.move_end();
                     if ctx.vi_mode == ViMode::Normal {
                         ctx.buf.exclude_eol();
