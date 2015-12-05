@@ -100,24 +100,25 @@ impl Buffer {
     }
 
     /// If the cursor is one past the end of the line, move one character to the left.
-    pub fn exclude_eol(&mut self) {
-        self.move_right();
+    pub fn exclude_eol(&mut self) -> bool {
+        let end = self.move_right();
         self.move_left();
+        end
     }
 
     pub fn move_start(&mut self) {
         self.pos = 0;
     }
 
-    pub fn move_word(&mut self) {
-        self.vi_move_word(ViMoveMode::Keyword);
+    pub fn move_word(&mut self) -> bool {
+        self.vi_move_word(ViMoveMode::Keyword)
     }
 
-    pub fn move_word_ws(&mut self) {
-        self.vi_move_word(ViMoveMode::Whitespace);
+    pub fn move_word_ws(&mut self) -> bool {
+        self.vi_move_word(ViMoveMode::Whitespace)
     }
 
-    fn vi_move_word(&mut self, move_mode: ViMoveMode) {
+    fn vi_move_word(&mut self, move_mode: ViMoveMode) -> bool {
         enum State {
             Whitespace,
             Keyword,
@@ -125,7 +126,7 @@ impl Buffer {
         };
 
         let mut state = match self.cursor().cp_after() {
-            None => return,
+            None => return false,
             Some(c) => match c {
                 c if c.is_whitespace() => State::Whitespace,
                 c if is_vi_keyword(c) => State::Keyword,
@@ -136,53 +137,54 @@ impl Buffer {
         while self.move_right() {
             let c = match self.cursor().cp_after() {
                 Some(c) => c,
-                _ => return,
+                _ => return false,
             };
 
             match state {
                 State::Whitespace => match c {
                     c if c.is_whitespace() => {},
-                    _ => return,
+                    _ => return true,
                 },
                 State::Keyword => match c {
                     c if c.is_whitespace() => state = State::Whitespace,
                     c if move_mode == ViMoveMode::Keyword
                         && !is_vi_keyword(c)
-                    => return,
+                    => return true,
                     _ => {}
                 },
                 State::NonKeyword => match c {
                     c if c.is_whitespace() => state = State::Whitespace,
                     c if move_mode == ViMoveMode::Keyword
                         && is_vi_keyword(c)
-                    => return,
+                    => return true,
                     _ => {}
                 },
             }
         }
+        return false;
     }
 
     pub fn move_end(&mut self) {
         self.pos = self.front_buf.len();
     }
 
-    pub fn move_to_end_of_word(&mut self) {
-        self.vi_move_word_end(ViMoveMode::Keyword, ViMoveDir::Right);
+    pub fn move_to_end_of_word(&mut self) -> bool {
+        self.vi_move_word_end(ViMoveMode::Keyword, ViMoveDir::Right)
     }
 
-    pub fn move_to_end_of_word_ws(&mut self) {
-        self.vi_move_word_end(ViMoveMode::Whitespace, ViMoveDir::Right);
+    pub fn move_to_end_of_word_ws(&mut self) -> bool {
+        self.vi_move_word_end(ViMoveMode::Whitespace, ViMoveDir::Right)
     }
 
-    pub fn move_word_back(&mut self) {
-        self.vi_move_word_end(ViMoveMode::Keyword, ViMoveDir::Left);
+    pub fn move_word_back(&mut self) -> bool {
+        self.vi_move_word_end(ViMoveMode::Keyword, ViMoveDir::Left)
     }
 
-    pub fn move_word_ws_back(&mut self) {
-        self.vi_move_word_end(ViMoveMode::Whitespace, ViMoveDir::Left);
+    pub fn move_word_ws_back(&mut self) -> bool {
+        self.vi_move_word_end(ViMoveMode::Whitespace, ViMoveDir::Left)
     }
 
-    fn vi_move_word_end(&mut self, move_mode: ViMoveMode, direction: ViMoveDir) {
+    fn vi_move_word_end(&mut self, move_mode: ViMoveMode, direction: ViMoveDir) -> bool {
         enum State {
             Whitespace,
             EndOnWord,
@@ -212,7 +214,7 @@ impl Buffer {
             // XXX should we use self.cursor().after()?
             let c = match self.cursor().cp_after() {
                 Some(c) => c,
-                _ => return,
+                _ => return false,
             };
 
             match state {
@@ -236,31 +238,34 @@ impl Buffer {
                 },
                 State::EndOnWord if !is_vi_keyword(c) => {
                     go_back(self);
-                    return;
+                    return true;
                 },
                 State::EndOnWhitespace if c.is_whitespace() => {
                     go_back(self);
-                    return;
+                    return true;
                 },
                 State::EndOnOther if c.is_whitespace() || is_vi_keyword(c) => {
                     go_back(self);
-                    return;
+                    return true;
                 },
                 _ => {},
             }
         }
+        return false;
     }
 
     fn char_pos(&self) -> usize {
          UnicodeWidthStr::width(self.cursor().slice_before())
     }
 
-    fn move_to_pos(&mut self, pos: usize) {
+    fn move_to_pos(&mut self, pos: usize) -> bool {
         if pos > self.front_buf.len() {
             self.move_end();
+            false
         }
         else {
             self.pos = pos;
+            true
         }
     }
 
@@ -671,9 +676,9 @@ fn move_word_whitespace_nonkeywords() {
     assert_eq!(buf.char_pos(), pos2);
 
     buf.move_start();
-    buf.move_word_ws();
+    assert!(buf.move_word_ws());
     assert_eq!(buf.char_pos(), pos1);
-    buf.move_word_ws();
+    assert!(!buf.move_word_ws());
     assert_eq!(buf.char_pos(), pos3);
 }
 
