@@ -61,7 +61,11 @@ macro_rules! vi_repeat {
     ( $ctx:ident, $x:expr ) => {
         match $ctx.vi_count {
             0 => { $x; }
-            _ => for _ in 0..$ctx.vi_count { $x; }
+            _ => for _ in 0..$ctx.vi_count {
+                if !$x {
+                    break;
+                }
+            },
         }
         $ctx.vi_count = 0;
     };
@@ -69,8 +73,16 @@ macro_rules! vi_repeat {
         match $ctx.vi_count {
             0 => { $operation; }
             _ => {
-                $operation;
-                for _ in 1..$ctx.vi_count { $step; $operation; }
+                if $operation {
+                    for _ in 1..$ctx.vi_count {
+                        if !$step {
+                            break;
+                        }
+                        if !$operation {
+                            break;
+                        }
+                    }
+                }
             }
         }
         $ctx.vi_count = 0;
@@ -134,19 +146,23 @@ pub fn edit<'a>(ctx: &mut EditCtx<'a>) -> EditResult<Vec<u8>> {
                 },
                 instr::Instr::HistoryPrev => {
                     vi_repeat!(ctx, {
-                        if ctx.history_cursor.incr() {
+                        let end = ctx.history_cursor.incr();
+                        if end {
                             ctx.buf.swap()
                         }
                         ctx.history_cursor.get().map(|s| ctx.buf.replace(s));
+                        end
                     });
                     Cont(false)
                 },
                 instr::Instr::HistoryNext => {
                     vi_repeat!(ctx, {
-                        if ctx.history_cursor.decr() {
+                        let end = ctx.history_cursor.decr();
+                        if end {
                             ctx.buf.swap()
                         }
                         ctx.history_cursor.get().map(|s| ctx.buf.replace(s));
+                        end
                     });
                     Cont(false)
                 },
@@ -238,10 +254,13 @@ pub fn edit<'a>(ctx: &mut EditCtx<'a>) -> EditResult<Vec<u8>> {
                 instr::Instr::ReplaceAtCursor(text) => {
                     vi_repeat!(
                         ctx,
-                        ctx.buf.replace_chars_at_cursor(text.clone()),
+                        {
+                            ctx.buf.replace_chars_at_cursor(text.clone());
+                            true
+                        },
                         {
                             ctx.buf.move_right();
-                            ctx.buf.exclude_eol();
+                            ctx.buf.exclude_eol()
                         }
                     );
                     ctx.vi_mode = ViMode::Normal;
