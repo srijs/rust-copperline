@@ -52,9 +52,13 @@ impl Buffer {
         self.pos -= insert_len;
     }
 
-    pub fn delete_char_left_of_cursor(&mut self) {
+    pub fn delete_char_left_of_cursor(&mut self) -> bool {
         if self.move_left() {
             self.front_buf.remove(self.pos);
+            true
+        }
+        else {
+            false
         }
     }
 
