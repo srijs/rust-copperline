@@ -258,12 +258,32 @@ impl Buffer {
         return false;
     }
 
-    pub fn move_to_char_right(&mut self, target_c: char) -> bool {
-        self.move_to_char(target_c, ViMoveDir::Right)
+    /// Move count characters to the right.
+    ///
+    /// If count characters are not found, the position will not be changed.
+    pub fn move_to_char_right(&mut self, target_c: char, count: u32) -> bool {
+        let pos = self.char_pos();
+        for _ in 0..count {
+            if !self.move_to_char(target_c, ViMoveDir::Right) {
+                self.move_to_pos(pos);
+                return false;
+            }
+        }
+        return true;
     }
 
-    pub fn move_to_char_left(&mut self, target_c: char) -> bool {
-        self.move_to_char(target_c, ViMoveDir::Left)
+    /// Move count characters to the left.
+    ///
+    /// If count characters are not found, the position will not be changed.
+    pub fn move_to_char_left(&mut self, target_c: char, count: u32) -> bool {
+        let pos = self.char_pos();
+        for _ in 0..count {
+            if !self.move_to_char(target_c, ViMoveDir::Left) {
+                self.move_to_pos(pos);
+                return false;
+            }
+        }
+        return true;
     }
 
     fn move_to_char(&mut self, target_c: char, direction: ViMoveDir) -> bool {
@@ -778,15 +798,20 @@ fn move_to_char() {
     let mut buf = Buffer::new();
     buf.insert_chars_at_cursor("words".to_string());
     let pos1 = buf.char_pos();
-    buf.insert_chars_at_cursor(" words".to_string());
+    buf.insert_chars_at_cursor(" wor".to_string());
+    let d_pos = buf.char_pos();
+    buf.insert_chars_at_cursor("ds".to_string());
 
     buf.move_start();
-    assert!(buf.move_to_char_right(' '));
+    assert!(buf.move_to_char_right(' ', 1));
     assert_eq!(buf.char_pos(), pos1);
     buf.move_end();
-    assert!(buf.move_to_char_left(' '));
+    assert!(buf.move_to_char_left(' ', 1));
     assert_eq!(buf.char_pos(), pos1);
-    buf.move_end();
-    assert_eq!(buf.move_to_char_left('z'), false);
+    buf.move_start();
+    assert_eq!(buf.move_to_char_right('z', 1), false);
     assert_eq!(buf.char_pos(), 0);
+    buf.move_start();
+    assert!(buf.move_to_char_right('d', 2));
+    assert_eq!(buf.char_pos(), d_pos);
 }
