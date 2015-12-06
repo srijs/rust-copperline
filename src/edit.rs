@@ -18,6 +18,7 @@ pub enum ViMode {
     Insert,
     Normal,
     Replace,
+    MoveChar(instr::CharMoveType),
 }
 
 pub struct EditCtx<'a> {
@@ -180,6 +181,10 @@ pub fn edit<'a>(ctx: &mut EditCtx<'a>) -> EditResult<Vec<u8>> {
                     ctx.vi_mode = ViMode::Replace;
                     Cont(false)
                 }
+                instr::Instr::MoveCharMode(mode) => {
+                    ctx.vi_mode = ViMode::MoveChar(mode);
+                    Cont(false)
+                }
                 instr::Instr::Insert => {
                     ctx.vi_mode = ViMode::Insert;
                     Cont(false)
@@ -238,6 +243,50 @@ pub fn edit<'a>(ctx: &mut EditCtx<'a>) -> EditResult<Vec<u8>> {
                 }
                 instr::Instr::MoveWordWsLeft => {
                     vi_repeat!(ctx, ctx.buf.move_word_ws_back());
+                    Cont(false)
+                }
+                instr::Instr::MoveCharRight(c) => {
+                    ctx.buf.move_to_char_right(c, match ctx.vi_count {
+                        0 => 1,
+                        n => n,
+                    });
+                    ctx.vi_count = 0;
+                    ctx.vi_mode = ViMode::Normal;
+                    Cont(false)
+                }
+                instr::Instr::MoveCharLeft(c) => {
+                    ctx.buf.move_to_char_left(c, match ctx.vi_count {
+                        0 => 1,
+                        n => n,
+                    });
+                    ctx.vi_count = 0;
+                    ctx.vi_mode = ViMode::Normal;
+                    Cont(false)
+                }
+                instr::Instr::MoveBeforeCharRight(c) => {
+                    let count = match ctx.vi_count {
+                        0 => 1,
+                        n => n,
+                    };
+
+                    if ctx.buf.move_to_char_right(c, count) {
+                        ctx.buf.move_left();
+                    }
+                    ctx.vi_count = 0;
+                    ctx.vi_mode = ViMode::Normal;
+                    Cont(false)
+                }
+                instr::Instr::MoveBeforeCharLeft(c) => {
+                    let count = match ctx.vi_count {
+                        0 => 1,
+                        n => n,
+                    };
+
+                    if ctx.buf.move_to_char_left(c, count) {
+                        ctx.buf.move_right();
+                    }
+                    ctx.vi_count = 0;
+                    ctx.vi_mode = ViMode::Normal;
                     Cont(false)
                 }
                 instr::Instr::Substitute => {

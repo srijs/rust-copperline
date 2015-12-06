@@ -13,6 +13,10 @@ pub enum Instr {
     MoveWordWsRight,
     MoveWordLeft,
     MoveWordWsLeft,
+    MoveCharRight(char),
+    MoveCharLeft(char),
+    MoveBeforeCharRight(char),
+    MoveBeforeCharLeft(char),
     DeleteCharLeftOfCursor,
     DeleteCharRightOfCursor,
     DeleteCharRightOfCursorOrEOF,
@@ -27,11 +31,20 @@ pub enum Instr {
     AppendEnd,
     NormalMode,
     ReplaceMode,
+    MoveCharMode(CharMoveType),
     Digit(u32),
     Done,
     Cancel,
     Clear,
     Noop
+}
+
+#[derive(Copy,Clone,PartialEq)]
+pub enum CharMoveType {
+    BeforeRight,
+    BeforeLeft,
+    Right,
+    Left,
 }
 
 pub fn interpret_token(token: parser::Token, edit_mode: EditMode, vi_mode: ViMode) -> Instr {
@@ -41,6 +54,7 @@ pub fn interpret_token(token: parser::Token, edit_mode: EditMode, vi_mode: ViMod
             ViMode::Insert => vi_insert_mode(token),
             ViMode::Normal => vi_normal_mode(token),
             ViMode::Replace => vi_replace_mode(token),
+            ViMode::MoveChar(move_type) => vi_move_char_mode(move_type, token),
         },
     }
 }
@@ -120,6 +134,10 @@ fn vi_normal_mode(token: parser::Token) -> Instr {
             "W"                     => Instr::MoveWordWsRight,
             "b"                     => Instr::MoveWordLeft,
             "B"                     => Instr::MoveWordWsLeft,
+            "t"                     => Instr::MoveCharMode(CharMoveType::BeforeRight),
+            "T"                     => Instr::MoveCharMode(CharMoveType::BeforeLeft),
+            "f"                     => Instr::MoveCharMode(CharMoveType::Right),
+            "F"                     => Instr::MoveCharMode(CharMoveType::Left),
 
             "a"                     => Instr::Append,
             "A"                     => Instr::AppendEnd,
@@ -144,6 +162,17 @@ fn vi_normal_mode(token: parser::Token) -> Instr {
 fn vi_replace_mode(token: parser::Token) -> Instr {
     match token {
         parser::Token::Text(text)   => Instr::ReplaceAtCursor(text),
+        _                           => Instr::NormalMode,
+    }
+}
+fn vi_move_char_mode(move_type: CharMoveType, token: parser::Token) -> Instr {
+    match token {
+        parser::Token::Text(ref text) if text.chars().count() == 1 => match move_type {
+            CharMoveType::BeforeLeft  => Instr::MoveBeforeCharLeft(text.chars().next().unwrap()),
+            CharMoveType::BeforeRight => Instr::MoveBeforeCharRight(text.chars().next().unwrap()),
+            CharMoveType::Left        => Instr::MoveCharLeft(text.chars().next().unwrap()),
+            CharMoveType::Right       => Instr::MoveCharRight(text.chars().next().unwrap()),
+        },
         _                           => Instr::NormalMode,
     }
 }
