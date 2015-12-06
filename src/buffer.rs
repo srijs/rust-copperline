@@ -258,6 +258,34 @@ impl Buffer {
         return false;
     }
 
+    pub fn move_to_char_right(&mut self, target_c: char) -> bool {
+        self.move_to_char(target_c, ViMoveDir::Right)
+    }
+
+    pub fn move_to_char_left(&mut self, target_c: char) -> bool {
+        self.move_to_char(target_c, ViMoveDir::Left)
+    }
+
+    fn move_to_char(&mut self, target_c: char, direction: ViMoveDir) -> bool {
+        // XXX this code is very similar to code in move_word_end(), should be replaced with some
+        // sort of iterator over the internal buffer starting at the current position
+        let advance = |buf: &mut Self| {
+            match direction {
+                ViMoveDir::Right => buf.move_right(),
+                ViMoveDir::Left => buf.move_left(),
+            }
+        };
+
+        while advance(self) {
+            match self.cursor().cp_after() {
+                Some(c) if c == target_c => return true,
+                Some(_) => {}
+                None => return false,
+            }
+        }
+        return false;
+    }
+
     fn char_pos(&self) -> usize {
          UnicodeWidthStr::width(self.cursor().slice_before())
     }
@@ -742,5 +770,23 @@ fn move_word_and_back() {
     buf.move_word_ws_back();
     assert_eq!(buf.char_pos(), pos1);
     buf.move_word_ws_back();
+    assert_eq!(buf.char_pos(), 0);
+}
+
+#[test]
+fn move_to_char() {
+    let mut buf = Buffer::new();
+    buf.insert_chars_at_cursor("words".to_string());
+    let pos1 = buf.char_pos();
+    buf.insert_chars_at_cursor(" words".to_string());
+
+    buf.move_start();
+    assert!(buf.move_to_char_right(' '));
+    assert_eq!(buf.char_pos(), pos1);
+    buf.move_end();
+    assert!(buf.move_to_char_left(' '));
+    assert_eq!(buf.char_pos(), pos1);
+    buf.move_end();
+    assert_eq!(buf.move_to_char_left('z'), false);
     assert_eq!(buf.char_pos(), 0);
 }
