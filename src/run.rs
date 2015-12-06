@@ -130,4 +130,17 @@ mod test {
         assert_eq!(run_edit(ctx, &mut io), Ok("ABC".to_string()));
     }
 
+    /// Make sure integers don't overflow in vi mode when using large command counts.
+    #[test]
+    fn no_integer_overflow() {
+        let mut input_vec = vec![27];
+        for _ in 0..50 {
+            input_vec.push('9' as u8);
+        }
+        input_vec.push(13);
+        let mut io = TestIO { input: input_vec, output: vec![] };
+        let h = History::new();
+        let ctx = EditCtx::new("foo> ", &h, ASCII, EditMode::Vi);
+        assert_eq!(run_edit(ctx, &mut io), Ok("".to_string()));
+    }
 }
