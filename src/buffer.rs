@@ -1,5 +1,6 @@
 use std::mem::swap;
 use std::ops::Deref;
+use std::cmp::Ordering;
 
 use unicode_width::UnicodeWidthStr;
 
@@ -321,6 +322,28 @@ impl Buffer {
         }
     }
 
+    fn delete_to_pos(&mut self, pos: usize) {
+        // the idea here is to start at the right most position and delete moving to the left until
+        // the left most position
+        let (start_pos, end_pos) = match self.char_pos().cmp(&pos) {
+            // char_pos() is less than pos, start at pos and delete back to char_pos()
+            Ordering::Less => (pos, self.char_pos()),
+            // char_pos() and pos are the same, nothing to do
+            Ordering::Equal => return,
+            // char_pos() is greater than pos, start at char_pos() and delete back to pos
+            Ordering::Greater => (self.char_pos(), pos),
+        };
+
+        self.move_to_pos(start_pos);
+        while self.char_pos() > end_pos {
+            self.delete_char_left_of_cursor();
+        }
+    }
+
+    pub fn start_delete(&mut self) -> DeleteContext {
+        DeleteContext::new(self)
+    }
+
     pub fn get_line(&self, prompt: &str, clear: bool) -> Vec<u8> {
         let mut line = Builder::new();
         if clear {
@@ -343,6 +366,40 @@ impl Buffer {
         swap(&mut s, &mut self.front_buf);
         self.pos = 0;
         s
+    }
+}
+
+#[must_use]
+struct DeleteContext<'a> {
+    start_pos: usize,
+    buf: &'a mut Buffer,
+}
+
+impl<'a> DeleteContext<'a> {
+    fn new(b: &'a mut Buffer) -> Self {
+        DeleteContext {
+            start_pos: b.char_pos(),
+            buf: b,
+        }
+    }
+
+    pub fn delete(mut self) {
+        self.buf.delete_to_pos(self.start_pos)
+    }
+}
+
+impl<'a> Deref for DeleteContext<'a> {
+    type Target = Buffer;
+
+    fn deref(&self) -> &Self::Target {
+        &self.buf
+    }
+}
+
+use std::ops::DerefMut;
+impl<'a> DerefMut for DeleteContext<'a> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.buf
     }
 }
 
@@ -814,4 +871,38 @@ fn move_to_char() {
     buf.move_start();
     assert!(buf.move_to_char_right('d', 2));
     assert_eq!(buf.char_pos(), d_pos);
+}
+
+#[test]
+fn move_and_delete() {
+    // test a simple move
+    let mut buf = Buffer::new();
+    buf.insert_chars_at_cursor("words words words".to_string());
+    buf.move_start();
+    {
+        let mut dc = buf.start_delete();
+        dc.move_word();
+        dc.delete();
+    }
+    assert_eq!(buf.to_string(), "words words".to_string());
+
+    // test deleting an empty string
+    let mut buf = Buffer::new();
+    buf.move_start();
+    {
+        let mut dc = buf.start_delete();
+        dc.move_end();
+        dc.delete();
+    }
+    assert_eq!(buf.to_string(), "".to_string());
+
+    // test deleting from the end to the beginning
+    let mut buf = Buffer::new();
+    buf.insert_chars_at_cursor("words words words".to_string());
+    {
+        let mut dc = buf.start_delete();
+        dc.move_start();
+        dc.delete();
+    }
+    assert_eq!(buf.to_string(), "".to_string());
 }
