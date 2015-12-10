@@ -6,6 +6,12 @@ use buffer::Buffer;
 use parser::{parse, ParseError, ParseSuccess};
 use instr;
 
+#[derive(Copy,Clone)]
+pub enum EditMode {
+    Emacs,
+    Vi,
+}
+
 pub struct EditCtx<'a> {
     buf: Buffer,
     history_cursor: Cursor<'a>,
