@@ -37,6 +37,7 @@ pub enum Instr {
     DeleteMode,
     Digit(u32),
     Done,
+    DoneOrEof,
     Cancel,
     Clear,
     Noop
@@ -93,11 +94,10 @@ fn emacs_mode(token: parser::Token) -> Instr {
 fn vi_common(token: &parser::Token) -> Instr {
     match *token {
         parser::Token::Enter        => Instr::Done,
+        parser::Token::CtrlD        => Instr::DoneOrEof,
         parser::Token::Esc          => Instr::NormalMode,
         parser::Token::Backspace    => Instr::DeleteCharLeftOfCursor,
         parser::Token::EscBracket3T => Instr::DeleteCharRightOfCursor,
-        // XXX EOF
-        parser::Token::CtrlD        => Instr::DeleteCharRightOfCursorOrEOF,
         // movement keys
         parser::Token::EscBracketA  => Instr::HistoryPrev,
         parser::Token::EscBracketB  => Instr::HistoryNext,

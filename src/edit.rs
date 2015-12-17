@@ -119,6 +119,14 @@ pub fn edit<'a>(ctx: &mut EditCtx<'a>) -> EditResult<Vec<u8>> {
                 instr::Instr::Done => {
                     Halt(Ok(ctx.buf.drain()))
                 },
+                instr::Instr::DoneOrEof => {
+                    if ctx.buf.is_empty() {
+                        Halt(Err(Error::EndOfFile))
+                    }
+                    else {
+                        Halt(Ok(ctx.buf.drain()))
+                    }
+                }
                 instr::Instr::DeleteCharLeftOfCursor => {
                     vi_repeat!(ctx, ctx.buf.delete_char_left_of_cursor());
                     Cont(false)

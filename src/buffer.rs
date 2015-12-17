@@ -367,6 +367,10 @@ impl Buffer {
         self.pos = 0;
         s
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.front_buf.is_empty()
+    }
 }
 
 #[must_use]
