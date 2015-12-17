@@ -183,7 +183,33 @@ fn vi_move_char_mode(move_type: CharMoveType, token: parser::Token) -> Instr {
 fn vi_delete_mode(token: parser::Token) -> Instr {
     match token {
         parser::Token::Text(text)   => match text.as_ref() {
+            "h"                     => Instr::MoveCursorLeft,
+            "l"                     => Instr::MoveCursorRight,
+            "0"                     => Instr::Digit(0),
+            "$"                     => Instr::MoveCursorEnd,
+
             "d"                     => Instr::DeleteLine,
+
+            "e"                     => Instr::MoveEndOfWordRight,
+            "E"                     => Instr::MoveEndOfWordWsRight,
+            "w"                     => Instr::MoveWordRight,
+            "W"                     => Instr::MoveWordWsRight,
+            "b"                     => Instr::MoveWordLeft,
+            "B"                     => Instr::MoveWordWsLeft,
+            "t"                     => Instr::MoveCharMode(CharMoveType::BeforeRight),
+            "T"                     => Instr::MoveCharMode(CharMoveType::BeforeLeft),
+            "f"                     => Instr::MoveCharMode(CharMoveType::Right),
+            "F"                     => Instr::MoveCharMode(CharMoveType::Left),
+
+            "1"                     => Instr::Digit(1),
+            "2"                     => Instr::Digit(2),
+            "3"                     => Instr::Digit(3),
+            "4"                     => Instr::Digit(4),
+            "5"                     => Instr::Digit(5),
+            "6"                     => Instr::Digit(6),
+            "7"                     => Instr::Digit(7),
+            "8"                     => Instr::Digit(8),
+            "9"                     => Instr::Digit(9),
             _                       => Instr::NormalMode,
         },
         _                           => Instr::NormalMode,
