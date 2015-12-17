@@ -124,6 +124,9 @@ pub fn edit<'a>(ctx: &mut EditCtx<'a>) -> EditResult<Vec<u8>> {
                 },
                 instr::Instr::DeleteCharRightOfCursor => {
                     vi_repeat!(ctx, ctx.buf.delete_char_right_of_cursor());
+                    if ctx.vi_mode == ViMode::Normal {
+                        ctx.buf.exclude_eol();
+                    }
                     Cont(false)
                 },
                 instr::Instr::DeleteCharRightOfCursorOrEOF => {
