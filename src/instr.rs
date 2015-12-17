@@ -57,6 +57,7 @@ pub fn interpret_token(token: parser::Token, edit_mode: EditMode, vi_mode: ViMod
             ViMode::Normal => vi_normal_mode(token),
             ViMode::Replace => vi_replace_mode(token),
             ViMode::MoveChar(move_type) => vi_move_char_mode(move_type, token),
+            ViMode::DeleteMoveChar(move_type) => vi_move_char_mode(move_type, token),
             ViMode::Delete => vi_delete_mode(token),
         },
     }

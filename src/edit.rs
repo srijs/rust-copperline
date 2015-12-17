@@ -19,6 +19,7 @@ pub enum ViMode {
     Normal,
     Replace,
     MoveChar(instr::CharMoveType),
+    DeleteMoveChar(instr::CharMoveType),
     Delete,
 }
 
@@ -214,7 +215,10 @@ pub fn edit<'a>(ctx: &mut EditCtx<'a>) -> EditResult<Vec<u8>> {
                     Cont(false)
                 }
                 instr::Instr::MoveCharMode(mode) => {
-                    ctx.vi_mode = ViMode::MoveChar(mode);
+                    ctx.vi_mode = match ctx.vi_mode {
+                        ViMode::Delete => ViMode::DeleteMoveChar(mode),
+                        _              => ViMode::MoveChar(mode),
+                    };
                     Cont(false)
                 }
                 instr::Instr::DeleteMode => {
@@ -309,14 +313,21 @@ pub fn edit<'a>(ctx: &mut EditCtx<'a>) -> EditResult<Vec<u8>> {
                     Cont(false)
                 }
                 instr::Instr::MoveCharRight(c) => {
-                    let mut dc = ctx.buf.start_delete();
-                    dc.move_to_char_right(c, match ctx.vi_count {
-                        0 => 1,
-                        n => n,
-                    });
-                    if ctx.vi_mode == ViMode::Delete {
-                        dc.delete();
+                    {
+                        let mut dc = ctx.buf.start_delete();
+                        dc.move_to_char_right(c, match ctx.vi_count {
+                            0 => 1,
+                            n => n,
+                        });
+                        match ctx.vi_mode {
+                            ViMode::DeleteMoveChar(_) => {
+                                dc.move_right(); // make deletion inclusive
+                                dc.delete();
+                            }
+                            _ => {},
+                        }
                     }
+                    ctx.buf.exclude_eol();
                     ctx.vi_count = 0;
                     ctx.vi_mode = ViMode::Normal;
                     Cont(false)
@@ -327,8 +338,9 @@ pub fn edit<'a>(ctx: &mut EditCtx<'a>) -> EditResult<Vec<u8>> {
                         0 => 1,
                         n => n,
                     });
-                    if ctx.vi_mode == ViMode::Delete {
-                        dc.delete();
+                    match ctx.vi_mode {
+                        ViMode::DeleteMoveChar(_) => dc.delete(),
+                        _ => {},
                     }
                     ctx.vi_count = 0;
                     ctx.vi_mode = ViMode::Normal;
@@ -343,8 +355,12 @@ pub fn edit<'a>(ctx: &mut EditCtx<'a>) -> EditResult<Vec<u8>> {
                     let mut dc = ctx.buf.start_delete();
                     if dc.move_to_char_right(c, count) {
                         dc.move_left();
-                        if ctx.vi_mode == ViMode::Delete {
+                        match ctx.vi_mode {
+                            ViMode::DeleteMoveChar(_) => {
+                            dc.move_right(); // make deletion inclusive
                             dc.delete();
+                            }
+                            _ => {},
                         }
                     }
                     ctx.vi_count = 0;
@@ -360,8 +376,9 @@ pub fn edit<'a>(ctx: &mut EditCtx<'a>) -> EditResult<Vec<u8>> {
                     let mut dc = ctx.buf.start_delete();
                     if dc.move_to_char_left(c, count) {
                         dc.move_right();
-                        if ctx.vi_mode == ViMode::Delete {
-                            dc.delete();
+                        match ctx.vi_mode {
+                            ViMode::DeleteMoveChar(_) => dc.delete(),
+                            _ => {},
                         }
                     }
                     ctx.vi_count = 0;
