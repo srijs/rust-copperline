@@ -20,6 +20,7 @@ pub enum Instr {
     DeleteCharLeftOfCursor,
     DeleteCharRightOfCursor,
     DeleteCharRightOfCursorOrEOF,
+    DeleteLine,
     Substitute,
     InsertAtCursor(String),
     ReplaceAtCursor(String),
@@ -181,6 +182,10 @@ fn vi_move_char_mode(move_type: CharMoveType, token: parser::Token) -> Instr {
 }
 fn vi_delete_mode(token: parser::Token) -> Instr {
     match token {
+        parser::Token::Text(text)   => match text.as_ref() {
+            "d"                     => Instr::DeleteLine,
+            _                       => Instr::NormalMode,
+        },
         _                           => Instr::NormalMode,
     }
 }

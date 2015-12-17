@@ -123,6 +123,12 @@ pub fn edit<'a>(ctx: &mut EditCtx<'a>) -> EditResult<Vec<u8>> {
                         Cont(false)
                     }
                 },
+                instr::Instr::DeleteLine => {
+                    ctx.buf.drain();
+                    ctx.vi_mode = ViMode::Normal;
+                    ctx.vi_count = 0;
+                    Cont(false)
+                }
                 instr::Instr::MoveCursorLeft => {
                     vi_repeat!(ctx, ctx.buf.move_left());
                     Cont(false)
