@@ -21,6 +21,7 @@ pub enum Instr {
     DeleteCharRightOfCursor,
     DeleteCharRightOfCursorOrEOF,
     DeleteLine,
+    DeleteToEnd,
     Substitute,
     InsertAtCursor(String),
     ReplaceAtCursor(String),
@@ -132,6 +133,7 @@ fn vi_normal_mode(token: parser::Token) -> Instr {
             "s"                     => Instr::Substitute,
             "r"                     => Instr::ReplaceMode,
             "d"                     => Instr::DeleteMode,
+            "D"                     => Instr::DeleteToEnd,
 
             "e"                     => Instr::MoveEndOfWordRight,
             "E"                     => Instr::MoveEndOfWordWsRight,

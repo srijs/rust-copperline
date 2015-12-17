@@ -143,6 +143,16 @@ pub fn edit<'a>(ctx: &mut EditCtx<'a>) -> EditResult<Vec<u8>> {
                     ctx.vi_count = 0;
                     Cont(false)
                 }
+                instr::Instr::DeleteToEnd => {
+                    ctx.vi_count = 0;
+                    {
+                        ctx.vi_mode = ViMode::Delete;
+                        let mut dc = ctx.buf.start_delete();
+                        vi_delete!(ctx with dc { dc.move_end(); false });
+                    }
+                    ctx.buf.exclude_eol();
+                    Cont(false)
+                }
                 instr::Instr::MoveCursorLeft => {
                     let mut dc = ctx.buf.start_delete();
                     vi_delete!(ctx with dc { dc.move_left() });
