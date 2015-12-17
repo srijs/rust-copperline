@@ -32,6 +32,7 @@ pub enum Instr {
     NormalMode,
     ReplaceMode,
     MoveCharMode(CharMoveType),
+    DeleteMode,
     Digit(u32),
     Done,
     Cancel,
@@ -55,6 +56,7 @@ pub fn interpret_token(token: parser::Token, edit_mode: EditMode, vi_mode: ViMod
             ViMode::Normal => vi_normal_mode(token),
             ViMode::Replace => vi_replace_mode(token),
             ViMode::MoveChar(move_type) => vi_move_char_mode(move_type, token),
+            ViMode::Delete => vi_delete_mode(token),
         },
     }
 }
@@ -127,6 +129,7 @@ fn vi_normal_mode(token: parser::Token) -> Instr {
             "x"                     => Instr::DeleteCharRightOfCursor,
             "s"                     => Instr::Substitute,
             "r"                     => Instr::ReplaceMode,
+            "d"                     => Instr::DeleteMode,
 
             "e"                     => Instr::MoveEndOfWordRight,
             "E"                     => Instr::MoveEndOfWordWsRight,
@@ -173,6 +176,11 @@ fn vi_move_char_mode(move_type: CharMoveType, token: parser::Token) -> Instr {
             CharMoveType::Left        => Instr::MoveCharLeft(text.chars().next().unwrap()),
             CharMoveType::Right       => Instr::MoveCharRight(text.chars().next().unwrap()),
         },
+        _                           => Instr::NormalMode,
+    }
+}
+fn vi_delete_mode(token: parser::Token) -> Instr {
+    match token {
         _                           => Instr::NormalMode,
     }
 }

@@ -19,6 +19,7 @@ pub enum ViMode {
     Normal,
     Replace,
     MoveChar(instr::CharMoveType),
+    Delete,
 }
 
 pub struct EditCtx<'a> {
@@ -183,6 +184,10 @@ pub fn edit<'a>(ctx: &mut EditCtx<'a>) -> EditResult<Vec<u8>> {
                 }
                 instr::Instr::MoveCharMode(mode) => {
                     ctx.vi_mode = ViMode::MoveChar(mode);
+                    Cont(false)
+                }
+                instr::Instr::DeleteMode => {
+                    ctx.vi_mode = ViMode::Delete;
                     Cont(false)
                 }
                 instr::Instr::Insert => {
