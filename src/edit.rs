@@ -352,7 +352,20 @@ pub fn edit<'a>(ctx: &mut EditCtx<'a>) -> EditResult<Vec<u8>> {
                 instr::Instr::MoveWordRight => {
                     {
                         let mut dc = ctx.buf.start_delete();
-                        vi_delete!(ctx with dc { dc.move_word() });
+                        vi_repeat!(ctx, dc.move_word());
+                        match ctx.vi_mode {
+                            ViMode::Delete => dc.delete(),
+                            ViMode::Change => {
+                                // move word right has special behavior in change mode
+                                if !dc.started_on_whitespace() && dc.move_right() {
+                                    dc.move_to_end_of_word_back();
+                                    dc.move_right();
+                                }
+                                dc.delete();
+                            }
+                            _ => {}
+                        }
+                        set_next_vi_mode!(ctx);
                     }
                     ctx.exclude_eol();
                     Cont(false)
@@ -360,7 +373,20 @@ pub fn edit<'a>(ctx: &mut EditCtx<'a>) -> EditResult<Vec<u8>> {
                 instr::Instr::MoveWordWsRight => {
                     {
                         let mut dc = ctx.buf.start_delete();
-                        vi_delete!(ctx with dc { dc.move_word_ws() });
+                        vi_repeat!(ctx, dc.move_word_ws());
+                        match ctx.vi_mode {
+                            ViMode::Delete => dc.delete(),
+                            ViMode::Change => {
+                                // move word right has special behavior in change mode
+                                if !dc.started_on_whitespace() && dc.move_right() {
+                                    dc.move_to_end_of_word_ws_back();
+                                    dc.move_right();
+                                }
+                                dc.delete();
+                            }
+                            _ => {}
+                        }
+                        set_next_vi_mode!(ctx);
                     }
                     ctx.exclude_eol();
                     Cont(false)

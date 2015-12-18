@@ -185,6 +185,11 @@ mod test {
         test_vi_cmds!("this is a test\x1bcF  real tes\x0d", "this is a real test");
         test_vi_cmds!("this is a test\x1bbbD\x0d", "this is ");
         test_vi_cmds!("this is a test\x1bbbCsome test\x0d", "this is some test");
+        test_vi_cmds!("this is a test\x1bbbcwsome\x0d", "this is some test");
+        test_vi_cmds!("these are some tests\x1bbbcwthe\x0d", "these are the tests");
+        test_vi_cmds!("this is a  test\x1bbbcwsome\x0d", "this is some  test");
+        test_vi_cmds!("this is a  test\x1bbhcwgood \x0d", "this is a good test");
+        test_vi_cmds!("this is a test\x1bbcwthing\x0d", "this is a thing");
         test_vi_cmds!("delete everything\x1bdd\x0d", "");
         test_vi_cmds!("delete everything\x1bccchange everything\x0d", "change everything");
         test_vi_cmds!("this is a test\x1bbc2T some \x0d", "this is some test");

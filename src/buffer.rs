@@ -116,14 +116,22 @@ impl Buffer {
     }
 
     pub fn move_word(&mut self) -> bool {
-        self.vi_move_word(ViMoveMode::Keyword)
+        self.vi_move_word(ViMoveMode::Keyword, ViMoveDir::Right)
     }
 
     pub fn move_word_ws(&mut self) -> bool {
-        self.vi_move_word(ViMoveMode::Whitespace)
+        self.vi_move_word(ViMoveMode::Whitespace, ViMoveDir::Right)
     }
 
-    fn vi_move_word(&mut self, move_mode: ViMoveMode) -> bool {
+    pub fn move_to_end_of_word_back(&mut self) -> bool {
+        self.vi_move_word(ViMoveMode::Keyword, ViMoveDir::Left)
+    }
+
+    pub fn move_to_end_of_word_ws_back(&mut self) -> bool {
+        self.vi_move_word(ViMoveMode::Whitespace, ViMoveDir::Left)
+    }
+
+    fn vi_move_word(&mut self, move_mode: ViMoveMode, direction: ViMoveDir) -> bool {
         enum State {
             Whitespace,
             Keyword,
@@ -139,7 +147,14 @@ impl Buffer {
             },
         };
 
-        while self.move_right() {
+        let advance = |buf: &mut Self| {
+            match direction {
+                ViMoveDir::Right => buf.move_right(),
+                ViMoveDir::Left => buf.move_left(),
+            }
+        };
+
+        while advance(self) {
             let c = match self.cursor().cp_after() {
                 Some(c) => c,
                 _ => return false,
@@ -375,6 +390,7 @@ impl Buffer {
 
 #[must_use]
 struct DeleteContext<'a> {
+    was_on_whitespace: bool,
     start_pos: usize,
     buf: &'a mut Buffer,
 }
@@ -382,9 +398,17 @@ struct DeleteContext<'a> {
 impl<'a> DeleteContext<'a> {
     fn new(b: &'a mut Buffer) -> Self {
         DeleteContext {
+            was_on_whitespace: match b.cursor().cp_after() {
+                Some(c) if c.is_whitespace() => true,
+                _ => false,
+            },
             start_pos: b.char_pos(),
             buf: b,
         }
+    }
+
+    pub fn started_on_whitespace(&self) -> bool {
+        self.was_on_whitespace
     }
 
     pub fn delete(mut self) {
