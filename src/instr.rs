@@ -22,6 +22,8 @@ pub enum Instr {
     DeleteCharRightOfCursorOrEOF,
     DeleteLine,
     DeleteToEnd,
+    ChangeLine,
+    ChangeToEnd,
     Substitute,
     InsertAtCursor(String),
     ReplaceAtCursor(String),
@@ -35,6 +37,7 @@ pub enum Instr {
     ReplaceMode,
     MoveCharMode(CharMoveType),
     DeleteMode,
+    ChangeMode,
     Digit(u32),
     Done,
     DoneOrEof,
@@ -60,7 +63,9 @@ pub fn interpret_token(token: parser::Token, edit_mode: EditMode, vi_mode: ViMod
             ViMode::Replace => vi_replace_mode(token),
             ViMode::MoveChar(move_type) => vi_move_char_mode(move_type, token),
             ViMode::DeleteMoveChar(move_type) => vi_move_char_mode(move_type, token),
+            ViMode::ChangeMoveChar(move_type) => vi_move_char_mode(move_type, token),
             ViMode::Delete => vi_delete_mode(token),
+            ViMode::Change => vi_change_mode(token),
         },
     }
 }
@@ -132,6 +137,8 @@ fn vi_normal_mode(token: parser::Token) -> Instr {
             "x"                     => Instr::DeleteCharRightOfCursor,
             "s"                     => Instr::Substitute,
             "r"                     => Instr::ReplaceMode,
+            "c"                     => Instr::ChangeMode,
+            "C"                     => Instr::ChangeToEnd,
             "d"                     => Instr::DeleteMode,
             "D"                     => Instr::DeleteToEnd,
 
@@ -183,15 +190,13 @@ fn vi_move_char_mode(move_type: CharMoveType, token: parser::Token) -> Instr {
         _                           => Instr::NormalMode,
     }
 }
-fn vi_delete_mode(token: parser::Token) -> Instr {
-    match token {
-        parser::Token::Text(text)   => match text.as_ref() {
+fn vi_change_delete_common(token: &parser::Token) -> Instr {
+    match *token {
+        parser::Token::Text(ref text) => match text.as_ref() {
             "h"                     => Instr::MoveCursorLeft,
             "l"                     => Instr::MoveCursorRight,
             "0"                     => Instr::Digit(0),
             "$"                     => Instr::MoveCursorEnd,
-
-            "d"                     => Instr::DeleteLine,
 
             "e"                     => Instr::MoveEndOfWordRight,
             "E"                     => Instr::MoveEndOfWordWsRight,
@@ -214,6 +219,24 @@ fn vi_delete_mode(token: parser::Token) -> Instr {
             "8"                     => Instr::Digit(8),
             "9"                     => Instr::Digit(9),
             _                       => Instr::NormalMode,
+        },
+        _                           => Instr::NormalMode,
+    }
+}
+fn vi_change_mode(token: parser::Token) -> Instr {
+    match token {
+        parser::Token::Text(ref text) => match text.as_ref() {
+            "c"                     => Instr::ChangeLine,
+            _                       => vi_change_delete_common(&token),
+        },
+        _                           => Instr::NormalMode,
+    }
+}
+fn vi_delete_mode(token: parser::Token) -> Instr {
+    match token {
+        parser::Token::Text(ref text) => match text.as_ref() {
+            "d"                     => Instr::DeleteLine,
+            _                       => vi_change_delete_common(&token),
         },
         _                           => Instr::NormalMode,
     }

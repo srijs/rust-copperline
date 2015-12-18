@@ -182,7 +182,11 @@ mod test {
         test_vi_cmds!("this is a test\x1b0d2fi\x0d", "s a test");
         test_vi_cmds!("this is a test\x1bdT \x0d", "this is a t");
         test_vi_cmds!("this is a test\x1bdF \x0d", "this is at");
+        test_vi_cmds!("this is a test\x1bcF  real tes\x0d", "this is a real test");
         test_vi_cmds!("this is a test\x1bbbD\x0d", "this is ");
+        test_vi_cmds!("this is a test\x1bbbCsome test\x0d", "this is some test");
         test_vi_cmds!("delete everything\x1bdd\x0d", "");
+        test_vi_cmds!("delete everything\x1bccchange everything\x0d", "change everything");
+        test_vi_cmds!("this is a test\x1bbc2T some \x0d", "this is some test");
     }
 }
