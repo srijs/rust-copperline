@@ -143,4 +143,46 @@ mod test {
         let ctx = EditCtx::new("foo> ", &h, ASCII, EditMode::Vi);
         assert_eq!(run_edit(ctx, &mut io), Ok("".to_string()));
     }
+
+    macro_rules! vi_cmd_vec {
+        ($str:expr) => {{
+            let input_str = $str;
+            let mut input_vec = Vec::with_capacity(input_str.len());
+            input_vec.extend(input_str.as_bytes());
+            input_vec
+        }}
+    }
+
+    macro_rules! test_vi_cmds {
+        ($cmd_str:expr, $result:expr) => {{
+            let mut io = TestIO { input: vi_cmd_vec!($cmd_str), output: vec![] };
+            let h = History::new();
+            let ctx = EditCtx::new("foo> ", &h, ASCII, EditMode::Vi);
+            assert_eq!(run_edit(ctx, &mut io), Ok($result.to_owned()));
+        }}
+    }
+
+    /// Test some vi commands.
+    #[test]
+    fn vi_commands() {
+        test_vi_cmds!("abc 123\x1bbdw\x0d", "abc ");
+        test_vi_cmds!("Everything except the last char will be deleted.\x1bd0\x0d", ".");
+        test_vi_cmds!("delete everything\x1b0d$\x0d", "");
+        test_vi_cmds!("abc\x1b03r \x0d", "   ");
+        test_vi_cmds!("this is test\x1b02ea a\x0d", "this is a test");
+        test_vi_cmds!("this is a\x1b0A test\x0d", "this is a test");
+        test_vi_cmds!("this is test\x1b02wia \x0d", "this is a test");
+        test_vi_cmds!("this is test\x1b3hia \x0d", "this is a test");
+        test_vi_cmds!("this is test\x1bhhhia \x0d", "this is a test");
+        test_vi_cmds!("this is a test\x1b0ftx\x0d", "this is a est");
+        test_vi_cmds!("this is a test\x1b0ttx\x0d", "this is atest");
+        test_vi_cmds!("this is a test\x1b10x\x0d", "this is a tes");
+        test_vi_cmds!("is a test\x1bIthis \x0d", "this is a test");
+        test_vi_cmds!("this is a test\x1b0d2ti\x0d", "is a test");
+        test_vi_cmds!("this is a test\x1b0d2fi\x0d", "s a test");
+        test_vi_cmds!("this is a test\x1bdT \x0d", "this is a t");
+        test_vi_cmds!("this is a test\x1bdF \x0d", "this is at");
+        test_vi_cmds!("this is a test\x1bbbD\x0d", "this is ");
+        test_vi_cmds!("delete everything\x1bdd\x0d", "");
+    }
 }
