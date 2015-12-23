@@ -445,11 +445,7 @@ enum ViMoveDir {
 
 /// All alphanumeric characters and _ are considered valid for keywords in vi by default.
 fn is_vi_keyword(c: char) -> bool {
-    match c {
-        '_' => true,
-        c if c.is_alphanumeric() => true,
-        _ => false,
-    }
+    c == '_' || c.is_alphanumeric()
 }
 
 #[test]
