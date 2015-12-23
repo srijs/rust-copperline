@@ -181,11 +181,12 @@ fn vi_replace_mode(token: parser::Token) -> Instr {
 }
 fn vi_move_char_mode(move_type: CharMoveType, token: parser::Token) -> Instr {
     match token {
-        parser::Token::Text(ref text) if text.chars().count() == 1 => match move_type {
-            CharMoveType::BeforeLeft  => Instr::MoveBeforeCharLeft(text.chars().next().unwrap()),
-            CharMoveType::BeforeRight => Instr::MoveBeforeCharRight(text.chars().next().unwrap()),
-            CharMoveType::Left        => Instr::MoveCharLeft(text.chars().next().unwrap()),
-            CharMoveType::Right       => Instr::MoveCharRight(text.chars().next().unwrap()),
+        parser::Token::Text(ref text) => match (move_type, text.chars().next()) {
+            (CharMoveType::BeforeLeft, Some(c))  => Instr::MoveBeforeCharLeft(c),
+            (CharMoveType::BeforeRight, Some(c)) => Instr::MoveBeforeCharRight(c),
+            (CharMoveType::Left, Some(c))        => Instr::MoveCharLeft(c),
+            (CharMoveType::Right, Some(c))       => Instr::MoveCharRight(c),
+            (_, None)                            => Instr::NormalMode, // this is probably unreachable!()
         },
         _                           => Instr::NormalMode,
     }
