@@ -898,7 +898,7 @@ fn move_to_char() {
 }
 
 #[test]
-fn move_and_delete() {
+fn move_and_delete1() {
     // test a simple move
     let mut buf = Buffer::new();
     buf.insert_chars_at_cursor("words words words".to_string());
@@ -909,7 +909,10 @@ fn move_and_delete() {
         dc.delete();
     }
     assert_eq!(buf.to_string(), "words words".to_string());
+}
 
+#[test]
+fn move_and_delete2() {
     // test deleting an empty string
     let mut buf = Buffer::new();
     buf.move_start();
@@ -919,7 +922,10 @@ fn move_and_delete() {
         dc.delete();
     }
     assert_eq!(buf.to_string(), "".to_string());
+}
 
+#[test]
+fn move_and_delete3() {
     // test deleting from the end to the beginning
     let mut buf = Buffer::new();
     buf.insert_chars_at_cursor("words words words".to_string());
