@@ -1,5 +1,5 @@
 use parser;
-use edit::EditMode;
+use edit::ModeState;
 use edit::ViMode;
 
 pub enum Instr {
@@ -54,19 +54,17 @@ pub enum CharMoveType {
     Left,
 }
 
-pub fn interpret_token(token: parser::Token, edit_mode: EditMode, vi_mode: ViMode) -> Instr {
-    match edit_mode {
-        EditMode::Emacs => emacs_mode(token),
-        EditMode::Vi => match vi_mode {
-            ViMode::Insert => vi_insert_mode(token),
-            ViMode::Normal => vi_normal_mode(token),
-            ViMode::Replace => vi_replace_mode(token),
-            ViMode::MoveChar(move_type) => vi_move_char_mode(move_type, token),
-            ViMode::DeleteMoveChar(move_type) => vi_move_char_mode(move_type, token),
-            ViMode::ChangeMoveChar(move_type) => vi_move_char_mode(move_type, token),
-            ViMode::Delete => vi_delete_mode(token),
-            ViMode::Change => vi_change_mode(token),
-        },
+pub fn interpret_token(token: parser::Token, edit_mode_state: ModeState) -> Instr {
+    match edit_mode_state {
+        ModeState::Emacs => emacs_mode(token),
+        ModeState::Vi(ViMode::Insert, _) => vi_insert_mode(token),
+        ModeState::Vi(ViMode::Normal, _) => vi_normal_mode(token),
+        ModeState::Vi(ViMode::Replace, _) => vi_replace_mode(token),
+        ModeState::Vi(ViMode::MoveChar(move_type), _) => vi_move_char_mode(move_type, token),
+        ModeState::Vi(ViMode::DeleteMoveChar(move_type), _) => vi_move_char_mode(move_type, token),
+        ModeState::Vi(ViMode::ChangeMoveChar(move_type), _) => vi_move_char_mode(move_type, token),
+        ModeState::Vi(ViMode::Delete, _) => vi_delete_mode(token),
+        ModeState::Vi(ViMode::Change, _) => vi_change_mode(token),
     }
 }
 

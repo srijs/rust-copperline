@@ -13,6 +13,41 @@ pub enum EditMode {
     Vi,
 }
 
+#[derive(Copy, Clone)]
+pub enum ModeState {
+    Emacs,
+    Vi(ViMode, u32),
+}
+
+impl ModeState {
+    pub fn new(mode: EditMode) -> Self {
+        match mode {
+            EditMode::Emacs => ModeState::Emacs,
+            // vi mode should start in insert mode
+            EditMode::Vi => ModeState::Vi(ViMode::Insert, 0),
+        }
+    }
+
+    fn with_vi_mode(&self, vi_mode: ViMode) -> Self {
+        if let ModeState::Vi(_, count) = *self {
+            ModeState::Vi(vi_mode, count)
+        }
+        else {
+            *self
+        }
+    }
+
+    fn with_vi_count(&self, count: u32) -> Self {
+        if let ModeState::Vi(mode, _) = *self {
+            ModeState::Vi(mode, count)
+        }
+        else {
+            *self
+        }
+    }
+
+}
+
 #[derive(Copy, Clone, PartialEq)]
 pub enum ViMode {
     Insert,
@@ -28,13 +63,15 @@ pub enum ViMode {
 /// Set a new vi mode based on the current vi mode.
 ///
 /// There are several common mode transitions that we handle here.
-fn next_vi_mode(mode: ViMode) -> ViMode {
-    match mode {
-        ViMode::Delete => ViMode::Normal,
-        ViMode::Change => ViMode::Insert,
-        ViMode::DeleteMoveChar(_) => ViMode::Normal,
-        ViMode::ChangeMoveChar(_) => ViMode::Insert,
-        _ => ViMode::Normal,
+fn next_vi_mode(mode_state: ModeState) -> ModeState {
+    match mode_state {
+        ModeState::Vi(ViMode::Delete, _) => ModeState::Vi(ViMode::Normal, 0),
+        ModeState::Vi(ViMode::Change, _) => ModeState::Vi(ViMode::Insert, 0),
+        ModeState::Vi(ViMode::DeleteMoveChar(_), _) => ModeState::Vi(ViMode::Normal, 0),
+        ModeState::Vi(ViMode::ChangeMoveChar(_), _) => ModeState::Vi(ViMode::Insert, 0),
+        ModeState::Vi(_, _) => ModeState::Vi(ViMode::Normal, 0),
+        // emacs mode is always emacs mode
+        ModeState::Emacs => ModeState::Emacs,
     }
 }
 
@@ -44,9 +81,7 @@ pub struct EditCtx<'a> {
     prompt: &'a str,
     seq: Vec<u8>,
     enc: EncodingRef,
-    mode: EditMode,
-    vi_mode: ViMode,
-    vi_count: u32,
+    mode_state: ModeState,
 }
 
 impl<'a> EditCtx<'a> {
@@ -58,10 +93,7 @@ impl<'a> EditCtx<'a> {
             prompt: prompt,
             seq: Vec::new(),
             enc: enc,
-            mode: mode,
-            // always start in insert mode
-            vi_mode: ViMode::Insert,
-            vi_count: 0,
+            mode_state: ModeState::new(mode),
         }
     }
 
@@ -71,7 +103,7 @@ impl<'a> EditCtx<'a> {
 
     /// Ignore one past the end of the line in vi normal mode.
     fn exclude_eol(&mut self) {
-        if self.vi_mode == ViMode::Normal {
+        if let ModeState::Vi(ViMode::Normal, _) = self.mode_state {
             self.buf.exclude_eol();
         }
     }
@@ -84,46 +116,57 @@ pub enum EditResult<C> {
 
 macro_rules! vi_repeat {
     ( $ctx:ident, $x:expr ) => {
-        match $ctx.vi_count {
-            0 => { $x; }
-            _ => for _ in 0..$ctx.vi_count {
-                if !$x {
-                    break;
-                }
-            },
-        }
-        $ctx.vi_count = 0;
-    };
-    ( $ctx:ident, $operation:expr, $step:expr ) => {
-        match $ctx.vi_count {
-            0 => { $operation; }
-            _ => {
-                if $operation {
-                    for _ in 1..$ctx.vi_count {
-                        if !$step {
+        match $ctx.mode_state {
+            ModeState::Emacs => { $x; }
+            ModeState::Vi(mode, count) => {
+                match count {
+                    0 => { $x; }
+                    _ => for _ in 0..count {
+                        if !$x {
                             break;
                         }
-                        if !$operation {
-                            break;
+                    },
+                }
+                $ctx.mode_state = ModeState::Vi(mode, 0);
+            }
+        }
+    };
+    ( $ctx:ident, $operation:expr, $step:expr ) => {
+        match $ctx.mode_state {
+            ModeState::Emacs => { $operation; }
+            ModeState::Vi(mode, count) => {
+                match count {
+                    0 => { $operation; }
+                    _ => {
+                        if $operation {
+                            for _ in 1..count {
+                                if !$step {
+                                    break;
+                                }
+                                if !$operation {
+                                    break;
+                                }
+                            }
                         }
                     }
                 }
+                $ctx.mode_state = ModeState::Vi(mode, 0);
             }
         }
-        $ctx.vi_count = 0;
     };
 }
 
 macro_rules! vi_delete {
     ( $ctx:ident with $dc:ident $x:expr ) => {
         vi_repeat!($ctx, $x);
-        match $ctx.vi_mode {
-            ViMode::Delete | ViMode::Change => {
+        match $ctx.mode_state {
+            ModeState::Vi(ViMode::Delete, _)
+            | ModeState::Vi(ViMode::Change, _) => {
                 $dc.delete();
             }
             _ => {}
         }
-        $ctx.vi_mode = next_vi_mode($ctx.vi_mode);
+        $ctx.mode_state = next_vi_mode($ctx.mode_state);
     };
 }
 
@@ -139,7 +182,7 @@ pub fn edit<'a>(ctx: &mut EditCtx<'a>) -> EditResult<Vec<u8>> {
         },
         Err(ParseError::Incomplete) => Cont(false),
         Ok(ParseSuccess(token, len)) => {
-            let res = match instr::interpret_token(token, ctx.mode, ctx.vi_mode) {
+            let res = match instr::interpret_token(token, ctx.mode_state) {
                 instr::Instr::Done => {
                     Halt(Ok(ctx.buf.drain()))
                 },
@@ -169,14 +212,12 @@ pub fn edit<'a>(ctx: &mut EditCtx<'a>) -> EditResult<Vec<u8>> {
                 },
                 instr::Instr::DeleteLine => {
                     ctx.buf.drain();
-                    ctx.vi_mode = ViMode::Normal;
-                    ctx.vi_count = 0;
+                    ctx.mode_state = ModeState::Vi(ViMode::Normal, 0);
                     Cont(false)
                 }
                 instr::Instr::DeleteToEnd => {
-                    ctx.vi_count = 0;
                     {
-                        ctx.vi_mode = ViMode::Delete;
+                        ctx.mode_state = ModeState::Vi(ViMode::Delete, 0);
                         let mut dc = ctx.buf.start_delete();
                         vi_delete!(ctx with dc { dc.move_end(); false });
                     }
@@ -185,14 +226,12 @@ pub fn edit<'a>(ctx: &mut EditCtx<'a>) -> EditResult<Vec<u8>> {
                 }
                 instr::Instr::ChangeLine => {
                     ctx.buf.drain();
-                    ctx.vi_mode = ViMode::Insert;
-                    ctx.vi_count = 0;
+                    ctx.mode_state = ModeState::Vi(ViMode::Insert, 0);
                     Cont(false)
                 }
                 instr::Instr::ChangeToEnd => {
-                    ctx.vi_count = 0;
                     {
-                        ctx.vi_mode = ViMode::Change;
+                        ctx.mode_state = ModeState::Vi(ViMode::Change, 0);
                         let mut dc = ctx.buf.start_delete();
                         vi_delete!(ctx with dc { dc.move_end(); false });
                     }
@@ -213,17 +252,19 @@ pub fn edit<'a>(ctx: &mut EditCtx<'a>) -> EditResult<Vec<u8>> {
                     Cont(false)
                 },
                 instr::Instr::MoveCursorStart => {
-                    ctx.vi_count = 0;
                     let mut dc = ctx.buf.start_delete();
                     dc.move_start();
-                    if ctx.vi_mode == ViMode::Delete || ctx.vi_mode == ViMode::Change {
-                        dc.delete();
-                        ctx.vi_mode = next_vi_mode(ctx.vi_mode);
+                    match ctx.mode_state {
+                        ModeState::Vi(ViMode::Delete, _)
+                        | ModeState::Vi(ViMode::Change, _) => {
+                            dc.delete();
+                        }
+                        _ => {}
                     }
+                    ctx.mode_state = next_vi_mode(ctx.mode_state);
                     Cont(false)
                 },
                 instr::Instr::MoveCursorEnd => {
-                    ctx.vi_count = 0;
                     {
                         let mut dc = ctx.buf.start_delete();
                         vi_delete!(ctx with dc { dc.move_end(); false });
@@ -254,66 +295,69 @@ pub fn edit<'a>(ctx: &mut EditCtx<'a>) -> EditResult<Vec<u8>> {
                     Cont(false)
                 },
                 instr::Instr::NormalMode => {
-                    if ctx.vi_mode == ViMode::Insert {
+                    if let ModeState::Vi(ViMode::Insert, _) = ctx.mode_state {
                         // cursor moves left when leaving insert mode
                         ctx.buf.move_left();
                     }
-                    ctx.vi_mode = ViMode::Normal;
-                    ctx.vi_count = 0;
+                    ctx.mode_state = ModeState::Vi(ViMode::Normal, 0);
                     Cont(false)
                 }
                 instr::Instr::ReplaceMode => {
-                    ctx.vi_mode = ViMode::Replace;
+                    ctx.mode_state = ctx.mode_state.with_vi_mode(ViMode::Replace);
                     Cont(false)
                 }
                 instr::Instr::MoveCharMode(mode) => {
-                    ctx.vi_mode = match ctx.vi_mode {
-                        ViMode::Delete => ViMode::DeleteMoveChar(mode),
-                        ViMode::Change => ViMode::ChangeMoveChar(mode),
-                        _              => ViMode::MoveChar(mode),
-                    };
+                    if let ModeState::Vi(vi_mode, _) = ctx.mode_state {
+                        let vi_mode = match vi_mode {
+                            ViMode::Delete => ViMode::DeleteMoveChar(mode),
+                            ViMode::Change => ViMode::ChangeMoveChar(mode),
+                            _              => ViMode::MoveChar(mode),
+                        };
+                        ctx.mode_state = ctx.mode_state.with_vi_mode(vi_mode);
+                    }
                     Cont(false)
                 }
                 instr::Instr::DeleteMode => {
-                    ctx.vi_mode = ViMode::Delete;
+                    ctx.mode_state = ctx.mode_state.with_vi_mode(ViMode::Delete);
                     Cont(false)
                 }
                 instr::Instr::ChangeMode => {
-                    ctx.vi_mode = ViMode::Change;
+                    ctx.mode_state = ctx.mode_state.with_vi_mode(ViMode::Change);
                     Cont(false)
                 }
                 instr::Instr::Insert => {
-                    ctx.vi_mode = ViMode::Insert;
+                    ctx.mode_state = ctx.mode_state.with_vi_mode(ViMode::Insert);
                     Cont(false)
                 }
                 instr::Instr::InsertStart => {
-                    ctx.vi_mode = ViMode::Insert;
+                    ctx.mode_state = ctx.mode_state.with_vi_mode(ViMode::Insert);
                     ctx.buf.move_start();
                     Cont(false)
                 }
                 instr::Instr::Append => {
-                    ctx.vi_mode = ViMode::Insert;
+                    ctx.mode_state = ctx.mode_state.with_vi_mode(ViMode::Insert);
                     ctx.buf.move_right();
                     Cont(false)
                 }
                 instr::Instr::AppendEnd => {
-                    ctx.vi_mode = ViMode::Insert;
+                    ctx.mode_state = ctx.mode_state.with_vi_mode(ViMode::Insert);
                     ctx.buf.move_end();
                     Cont(false)
                 }
                 instr::Instr::Digit(i) => {
-                    match (ctx.vi_count, i) {
+                    match (ctx.mode_state, i) {
                         // if count is 0, then 0 moves to the start of a line
-                        (0, 0) => {
+                        (ModeState::Vi(_, 0), 0) => {
                             let mut dc = ctx.buf.start_delete();
                             vi_delete!(ctx with dc { dc.move_start(); false });
                         }
                         // otherwise add a digit to the count
-                        (_, i) => {
-                            if ctx.vi_count <= (u32::MAX - i) / 10 {
-                                ctx.vi_count = ctx.vi_count * 10 + i
+                        (ModeState::Vi(_, count), i) => {
+                            if count <= (u32::MAX - i) / 10 {
+                                ctx.mode_state = ctx.mode_state.with_vi_count(count * 10 + i);
                             }
                         }
+                        (ModeState::Emacs, _) => {} // unreachable!()?
                     }
                     Cont(false)
                 }
@@ -321,10 +365,14 @@ pub fn edit<'a>(ctx: &mut EditCtx<'a>) -> EditResult<Vec<u8>> {
                     {
                         let mut dc = ctx.buf.start_delete();
                         vi_repeat!(ctx, dc.move_to_end_of_word());
-                        if ctx.vi_mode == ViMode::Delete || ctx.vi_mode == ViMode::Change {
-                            dc.move_right(); // vi deletes an extra character
-                            dc.delete();
-                            ctx.vi_mode = next_vi_mode(ctx.vi_mode);
+                        match ctx.mode_state {
+                            ModeState::Vi(ViMode::Delete, _)
+                            | ModeState::Vi(ViMode::Change, _) => {
+                                dc.move_right(); // vi deletes an extra character
+                                dc.delete();
+                                ctx.mode_state = next_vi_mode(ctx.mode_state);
+                            }
+                            _ => {}
                         }
                     }
                     ctx.exclude_eol();
@@ -334,10 +382,14 @@ pub fn edit<'a>(ctx: &mut EditCtx<'a>) -> EditResult<Vec<u8>> {
                     {
                         let mut dc = ctx.buf.start_delete();
                         vi_repeat!(ctx, dc.move_to_end_of_word_ws());
-                        if ctx.vi_mode == ViMode::Delete || ctx.vi_mode == ViMode::Change {
-                            dc.move_right(); // vi deletes an extra character
-                            dc.delete();
-                            ctx.vi_mode = next_vi_mode(ctx.vi_mode);
+                        match ctx.mode_state {
+                            ModeState::Vi(ViMode::Delete, _)
+                            | ModeState::Vi(ViMode::Change, _) => {
+                                dc.move_right(); // vi deletes an extra character
+                                dc.delete();
+                                ctx.mode_state = next_vi_mode(ctx.mode_state);
+                            }
+                            _ => {}
                         }
                     }
                     ctx.exclude_eol();
@@ -347,9 +399,9 @@ pub fn edit<'a>(ctx: &mut EditCtx<'a>) -> EditResult<Vec<u8>> {
                     {
                         let mut dc = ctx.buf.start_delete();
                         vi_repeat!(ctx, dc.move_word());
-                        match ctx.vi_mode {
-                            ViMode::Delete => dc.delete(),
-                            ViMode::Change => {
+                        match ctx.mode_state {
+                            ModeState::Vi(ViMode::Delete, _) => dc.delete(),
+                            ModeState::Vi(ViMode::Change, _) => {
                                 // move word right has special behavior in change mode
                                 if !dc.started_on_whitespace() && dc.move_right() {
                                     dc.move_to_end_of_word_back();
@@ -359,7 +411,7 @@ pub fn edit<'a>(ctx: &mut EditCtx<'a>) -> EditResult<Vec<u8>> {
                             }
                             _ => {}
                         }
-                        ctx.vi_mode = next_vi_mode(ctx.vi_mode);
+                        ctx.mode_state = next_vi_mode(ctx.mode_state);
                     }
                     ctx.exclude_eol();
                     Cont(false)
@@ -368,9 +420,9 @@ pub fn edit<'a>(ctx: &mut EditCtx<'a>) -> EditResult<Vec<u8>> {
                     {
                         let mut dc = ctx.buf.start_delete();
                         vi_repeat!(ctx, dc.move_word_ws());
-                        match ctx.vi_mode {
-                            ViMode::Delete => dc.delete(),
-                            ViMode::Change => {
+                        match ctx.mode_state {
+                            ModeState::Vi(ViMode::Delete, _) => dc.delete(),
+                            ModeState::Vi(ViMode::Change, _) => {
                                 // move word right has special behavior in change mode
                                 if !dc.started_on_whitespace() && dc.move_right() {
                                     dc.move_to_end_of_word_ws_back();
@@ -380,7 +432,7 @@ pub fn edit<'a>(ctx: &mut EditCtx<'a>) -> EditResult<Vec<u8>> {
                             }
                             _ => {}
                         }
-                        ctx.vi_mode = next_vi_mode(ctx.vi_mode);
+                        ctx.mode_state = next_vi_mode(ctx.mode_state);
                     }
                     ctx.exclude_eol();
                     Cont(false)
@@ -398,79 +450,83 @@ pub fn edit<'a>(ctx: &mut EditCtx<'a>) -> EditResult<Vec<u8>> {
                 instr::Instr::MoveCharRight(c) => {
                     {
                         let mut dc = ctx.buf.start_delete();
-                        dc.move_to_char_right(c, match ctx.vi_count {
-                            0 => 1,
-                            n => n,
-                        });
-                        match ctx.vi_mode {
-                            ViMode::DeleteMoveChar(_) | ViMode::ChangeMoveChar(_) => {
-                                dc.move_right(); // make deletion inclusive
-                                dc.delete();
+                        if let ModeState::Vi(mode, count) = ctx.mode_state {
+                            dc.move_to_char_right(c, match count {
+                                0 => 1,
+                                n => n,
+                            });
+                            match mode {
+                                ViMode::DeleteMoveChar(_) | ViMode::ChangeMoveChar(_) => {
+                                    dc.move_right(); // make deletion inclusive
+                                    dc.delete();
+                                }
+                                _ => {},
                             }
-                            _ => {},
                         }
                     }
-                    ctx.vi_count = 0;
-                    ctx.vi_mode = next_vi_mode(ctx.vi_mode);
+                    ctx.mode_state = next_vi_mode(ctx.mode_state);
                     ctx.exclude_eol();
                     Cont(false)
                 }
                 instr::Instr::MoveCharLeft(c) => {
                     let mut dc = ctx.buf.start_delete();
-                    dc.move_to_char_left(c, match ctx.vi_count {
-                        0 => 1,
-                        n => n,
-                    });
-                    match ctx.vi_mode {
-                        ViMode::DeleteMoveChar(_) | ViMode::ChangeMoveChar(_) => dc.delete(),
-                        _ => {},
-                    }
-                    ctx.vi_count = 0;
-                    ctx.vi_mode = next_vi_mode(ctx.vi_mode);
-                    Cont(false)
-                }
-                instr::Instr::MoveBeforeCharRight(c) => {
-                    let count = match ctx.vi_count {
-                        0 => 1,
-                        n => n,
-                    };
-
-                    let mut dc = ctx.buf.start_delete();
-                    if dc.move_to_char_right(c, count) {
-                        dc.move_left();
-                        match ctx.vi_mode {
-                            ViMode::DeleteMoveChar(_) | ViMode::ChangeMoveChar(_) => {
-                                dc.move_right(); // make deletion inclusive
-                                dc.delete();
-                            }
-                            _ => {},
-                        }
-                    }
-                    ctx.vi_count = 0;
-                    ctx.vi_mode = next_vi_mode(ctx.vi_mode);
-                    Cont(false)
-                }
-                instr::Instr::MoveBeforeCharLeft(c) => {
-                    let count = match ctx.vi_count {
-                        0 => 1,
-                        n => n,
-                    };
-
-                    let mut dc = ctx.buf.start_delete();
-                    if dc.move_to_char_left(c, count) {
-                        dc.move_right();
-                        match ctx.vi_mode {
+                    if let ModeState::Vi(mode, count) = ctx.mode_state {
+                        dc.move_to_char_left(c, match count {
+                            0 => 1,
+                            n => n,
+                        });
+                        match mode {
                             ViMode::DeleteMoveChar(_) | ViMode::ChangeMoveChar(_) => dc.delete(),
                             _ => {},
                         }
                     }
-                    ctx.vi_count = 0;
-                    ctx.vi_mode = next_vi_mode(ctx.vi_mode);
+                    ctx.mode_state = next_vi_mode(ctx.mode_state);
+                    Cont(false)
+                }
+                instr::Instr::MoveBeforeCharRight(c) => {
+                    if let ModeState::Vi(mode, count) = ctx.mode_state {
+                        let count = match count {
+                            0 => 1,
+                            n => n,
+                        };
+
+                        let mut dc = ctx.buf.start_delete();
+                        if dc.move_to_char_right(c, count) {
+                            dc.move_left();
+                            match mode {
+                                ViMode::DeleteMoveChar(_) | ViMode::ChangeMoveChar(_) => {
+                                    dc.move_right(); // make deletion inclusive
+                                    dc.delete();
+                                }
+                                _ => {},
+                            }
+                        }
+                    }
+                    ctx.mode_state = next_vi_mode(ctx.mode_state);
+                    Cont(false)
+                }
+                instr::Instr::MoveBeforeCharLeft(c) => {
+                    if let ModeState::Vi(mode, count) = ctx.mode_state {
+                        let count = match count {
+                            0 => 1,
+                            n => n,
+                        };
+
+                        let mut dc = ctx.buf.start_delete();
+                        if dc.move_to_char_left(c, count) {
+                            dc.move_right();
+                            match mode {
+                                ViMode::DeleteMoveChar(_) | ViMode::ChangeMoveChar(_) => dc.delete(),
+                                _ => {},
+                            }
+                        }
+                    }
+                    ctx.mode_state = next_vi_mode(ctx.mode_state);
                     Cont(false)
                 }
                 instr::Instr::Substitute => {
                     vi_repeat!(ctx, ctx.buf.delete_char_right_of_cursor());
-                    ctx.vi_mode = ViMode::Insert;
+                    ctx.mode_state = ctx.mode_state.with_vi_mode(ViMode::Insert);
                     Cont(false)
                 }
                 instr::Instr::Noop => {
@@ -496,7 +552,7 @@ pub fn edit<'a>(ctx: &mut EditCtx<'a>) -> EditResult<Vec<u8>> {
                             ctx.buf.exclude_eol()
                         }
                     );
-                    ctx.vi_mode = ViMode::Normal;
+                    ctx.mode_state = ctx.mode_state.with_vi_mode(ViMode::Normal);
                     Cont(false)
                 }
             };
