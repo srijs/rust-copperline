@@ -42,11 +42,13 @@ pub use error::Error;
 use history::History;
 use term::Term;
 use edit::EditCtx;
+pub use edit::EditMode;
 use run::RunIO;
 
 pub struct Copperline {
     term: Term,
-    history: History
+    history: History,
+    mode: EditMode,
 }
 
 impl Copperline {
@@ -65,8 +67,15 @@ impl Copperline {
     pub fn new_from_raw_fds(ifd: RawFd, ofd: RawFd) -> Copperline {
         Copperline {
             term: Term::new(ifd, ofd),
-            history: History::new()
+            history: History::new(),
+            // start in emacs mode by default
+            mode: EditMode::Emacs,
         }
+    }
+
+    /// Set the editing mode.
+    pub fn set_edit_mode(&mut self, mode: EditMode) {
+        self.mode = mode;
     }
 
     /// Reads a line from the input using the specified prompt.
@@ -75,7 +84,7 @@ impl Copperline {
             return Err(Error::UnsupportedTerm);
         }
         let mut io = try!(self.term.acquire_io());
-        let ctx = EditCtx::new(prompt, &self.history, enc);
+        let ctx = EditCtx::new(prompt, &self.history, enc, self.mode);
         let res = run::run(ctx, &mut io);
         drop(io);
         println!("");

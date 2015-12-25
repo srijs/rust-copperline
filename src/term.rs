@@ -26,6 +26,15 @@ impl<'a> RunIO for TermIO<'a> {
         let read = try!(self.in_term.read_byte());
         read.ok_or(Error::EndOfFile)
     }
+    fn read_seq(&mut self) -> Result<Vec<u8>, Error> {
+        let read = try!(self.in_term.read_seq());
+        if read.len() == 0 {
+            Err(Error::EndOfFile)
+        }
+        else {
+            Ok(read)
+        }
+    }
 }
 
 pub struct RawMode {
@@ -111,6 +120,17 @@ impl Term {
             return Ok(None);
         }
         Ok(Some(input[0]))
+    }
+
+    /// Attempt to read 3 bytes from the terminal.
+    pub fn read_seq(&mut self) -> Result<Vec<u8>, nix::Error> {
+        let mut input = vec![0u8; 3];
+        let n = try!(read(self.in_fd, &mut input[..]));
+        unsafe {
+            assert!(n <= input.len());
+            input.set_len(n);
+        }
+        Ok(input)
     }
 
 }
