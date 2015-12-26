@@ -2,11 +2,29 @@ use parser;
 use edit::ModeState;
 use edit::ViMode;
 
+pub enum CommonInstr {
+    Done,
+    Cancel,
+    Clear,
+    Noop
+}
+
+pub enum HistoryInstr {
+    Next,
+    Prev
+}
+
+pub enum MoveCursorInstr {
+    Left,
+    Right,
+    Start,
+    End
+}
+
 pub enum Instr {
-    MoveCursorLeft,
-    MoveCursorRight,
-    MoveCursorStart,
-    MoveCursorEnd,
+    Common(CommonInstr),
+    History(HistoryInstr),
+    MoveCursor(MoveCursorInstr),
     MoveEndOfWordRight,
     MoveEndOfWordWsRight,
     MoveWordRight,
@@ -27,8 +45,6 @@ pub enum Instr {
     Substitute,
     InsertAtCursor(String),
     ReplaceAtCursor(String),
-    HistoryNext,
-    HistoryPrev,
     Insert,
     InsertStart,
     Append,
@@ -39,11 +55,7 @@ pub enum Instr {
     DeleteMode,
     ChangeMode,
     Digit(u32),
-    Done,
-    DoneOrEof,
-    Cancel,
-    Clear,
-    Noop
+    DoneOrEof
 }
 
 #[derive(Copy,Clone,PartialEq)]
@@ -70,49 +82,49 @@ pub fn interpret_token(token: parser::Token, edit_mode_state: ModeState) -> Inst
 
 fn emacs_mode(token: parser::Token) -> Instr {
     match token {
-        parser::Token::Enter        => Instr::Done,
+        parser::Token::Enter        => Instr::Common(CommonInstr::Done),
         parser::Token::Backspace    => Instr::DeleteCharLeftOfCursor,
         parser::Token::CtrlH        => Instr::DeleteCharLeftOfCursor,
         parser::Token::EscBracket3T => Instr::DeleteCharRightOfCursor,
         parser::Token::CtrlD        => Instr::DeleteCharRightOfCursorOrEOF,
-        parser::Token::EscBracketA  => Instr::HistoryPrev,
-        parser::Token::CtrlP        => Instr::HistoryPrev,
-        parser::Token::EscBracketB  => Instr::HistoryNext,
-        parser::Token::CtrlN        => Instr::HistoryNext,
-        parser::Token::EscBracketC  => Instr::MoveCursorRight,
-        parser::Token::CtrlF        => Instr::MoveCursorRight,
-        parser::Token::EscBracketD  => Instr::MoveCursorLeft,
-        parser::Token::CtrlB        => Instr::MoveCursorLeft,
-        parser::Token::CtrlA        => Instr::MoveCursorStart,
-        parser::Token::EscBracketH  => Instr::MoveCursorStart,
-        parser::Token::CtrlE        => Instr::MoveCursorEnd,
-        parser::Token::EscBracketF  => Instr::MoveCursorEnd,
+        parser::Token::EscBracketA  => Instr::History(HistoryInstr::Prev),
+        parser::Token::CtrlP        => Instr::History(HistoryInstr::Prev),
+        parser::Token::EscBracketB  => Instr::History(HistoryInstr::Next),
+        parser::Token::CtrlN        => Instr::History(HistoryInstr::Next),
+        parser::Token::EscBracketC  => Instr::MoveCursor(MoveCursorInstr::Right),
+        parser::Token::CtrlF        => Instr::MoveCursor(MoveCursorInstr::Right),
+        parser::Token::EscBracketD  => Instr::MoveCursor(MoveCursorInstr::Left),
+        parser::Token::CtrlB        => Instr::MoveCursor(MoveCursorInstr::Left),
+        parser::Token::CtrlA        => Instr::MoveCursor(MoveCursorInstr::Start),
+        parser::Token::EscBracketH  => Instr::MoveCursor(MoveCursorInstr::Start),
+        parser::Token::CtrlE        => Instr::MoveCursor(MoveCursorInstr::End),
+        parser::Token::EscBracketF  => Instr::MoveCursor(MoveCursorInstr::End),
         parser::Token::Text(text)   => Instr::InsertAtCursor(text),
-        parser::Token::CtrlC        => Instr::Cancel,
-        parser::Token::CtrlL        => Instr::Clear,
-        _                           => Instr::Noop
+        parser::Token::CtrlC        => Instr::Common(CommonInstr::Cancel),
+        parser::Token::CtrlL        => Instr::Common(CommonInstr::Clear),
+        _                           => Instr::Common(CommonInstr::Noop)
     }
 }
 
 fn vi_common(token: &parser::Token) -> Instr {
     match *token {
-        parser::Token::Enter        => Instr::Done,
+        parser::Token::Enter        => Instr::Common(CommonInstr::Done),
         parser::Token::CtrlD        => Instr::DoneOrEof,
         parser::Token::Esc          => Instr::NormalMode,
         parser::Token::Backspace    => Instr::DeleteCharLeftOfCursor,
         parser::Token::EscBracket3T => Instr::DeleteCharRightOfCursor,
         // movement keys
-        parser::Token::EscBracketA  => Instr::HistoryPrev,
-        parser::Token::EscBracketB  => Instr::HistoryNext,
-        parser::Token::EscBracketC  => Instr::MoveCursorRight,
-        parser::Token::EscBracketD  => Instr::MoveCursorLeft,
+        parser::Token::EscBracketA  => Instr::History(HistoryInstr::Prev),
+        parser::Token::EscBracketB  => Instr::History(HistoryInstr::Next),
+        parser::Token::EscBracketC  => Instr::MoveCursor(MoveCursorInstr::Right),
+        parser::Token::EscBracketD  => Instr::MoveCursor(MoveCursorInstr::Left),
         // home
-        parser::Token::EscBracketH  => Instr::MoveCursorStart,
+        parser::Token::EscBracketH  => Instr::MoveCursor(MoveCursorInstr::Start),
         // end
-        parser::Token::EscBracketF  => Instr::MoveCursorEnd,
-        parser::Token::CtrlC        => Instr::Cancel,
-        parser::Token::CtrlL        => Instr::Clear,
-        _                           => Instr::Noop,
+        parser::Token::EscBracketF  => Instr::MoveCursor(MoveCursorInstr::End),
+        parser::Token::CtrlC        => Instr::Common(CommonInstr::Cancel),
+        parser::Token::CtrlL        => Instr::Common(CommonInstr::Clear),
+        _                           => Instr::Common(CommonInstr::Noop),
     }
 }
 
@@ -125,12 +137,12 @@ fn vi_insert_mode(token: parser::Token) -> Instr {
 fn vi_normal_mode(token: parser::Token) -> Instr {
     match token {
         parser::Token::Text(text)   => match text.as_ref() {
-            "h"                     => Instr::MoveCursorLeft,
-            "j"                     => Instr::HistoryNext,
-            "k"                     => Instr::HistoryPrev,
-            "l"                     => Instr::MoveCursorRight,
+            "h"                     => Instr::MoveCursor(MoveCursorInstr::Left),
+            "j"                     => Instr::History(HistoryInstr::Next),
+            "k"                     => Instr::History(HistoryInstr::Prev),
+            "l"                     => Instr::MoveCursor(MoveCursorInstr::Right),
             "0"                     => Instr::Digit(0),
-            "$"                     => Instr::MoveCursorEnd,
+            "$"                     => Instr::MoveCursor(MoveCursorInstr::End),
 
             "x"                     => Instr::DeleteCharRightOfCursor,
             "s"                     => Instr::Substitute,
@@ -166,7 +178,7 @@ fn vi_normal_mode(token: parser::Token) -> Instr {
             "8"                     => Instr::Digit(8),
             "9"                     => Instr::Digit(9),
 
-            _                       => Instr::Noop,
+            _                       => Instr::Common(CommonInstr::Noop),
         },
         _                           => vi_common(&token),
     }
@@ -192,10 +204,10 @@ fn vi_move_char_mode(move_type: CharMoveType, token: parser::Token) -> Instr {
 fn vi_change_delete_common(token: &parser::Token) -> Instr {
     match *token {
         parser::Token::Text(ref text) => match text.as_ref() {
-            "h"                     => Instr::MoveCursorLeft,
-            "l"                     => Instr::MoveCursorRight,
+            "h"                     => Instr::MoveCursor(MoveCursorInstr::Left),
+            "l"                     => Instr::MoveCursor(MoveCursorInstr::Right),
             "0"                     => Instr::Digit(0),
-            "$"                     => Instr::MoveCursorEnd,
+            "$"                     => Instr::MoveCursor(MoveCursorInstr::End),
 
             "e"                     => Instr::MoveEndOfWordRight,
             "E"                     => Instr::MoveEndOfWordWsRight,

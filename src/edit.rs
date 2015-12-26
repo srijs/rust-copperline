@@ -170,6 +170,81 @@ macro_rules! vi_delete {
     };
 }
 
+fn edit_common<'a>(ctx: &mut EditCtx<'a>, cinstr: instr::CommonInstr) -> EditResult<bool> {
+    match cinstr {
+        instr::CommonInstr::Done => EditResult::Halt(Ok(ctx.buf.drain())),
+        instr::CommonInstr::Noop => EditResult::Cont(false),
+        instr::CommonInstr::Cancel => EditResult::Halt(Err(Error::Cancel)),
+        instr::CommonInstr::Clear => EditResult::Cont(true)
+    }
+}
+
+fn edit_history<'a>(ctx: &mut EditCtx<'a>, hinstr: instr::HistoryInstr) -> EditResult<bool> {
+    match hinstr {
+        instr::HistoryInstr::Prev => {
+            vi_repeat!(ctx, {
+                let end = ctx.history_cursor.incr();
+                if end {
+                    ctx.buf.swap()
+                }
+                ctx.history_cursor.get().map(|s| ctx.buf.replace(s));
+                end
+            });
+            EditResult::Cont(false)
+        }
+        instr::HistoryInstr::Next => {
+            vi_repeat!(ctx, {
+                let end = ctx.history_cursor.decr();
+                if end {
+                    ctx.buf.swap()
+                }
+                ctx.history_cursor.get().map(|s| ctx.buf.replace(s));
+                end
+            });
+            EditResult::Cont(false)
+        }
+    }
+}
+
+fn edit_move_cursor<'a>(ctx: &mut EditCtx<'a>, mcinstr: instr::MoveCursorInstr) -> EditResult<bool> {
+    match mcinstr {
+        instr::MoveCursorInstr::Left => {
+            let mut dc = ctx.buf.start_delete();
+            vi_delete!(ctx with dc { dc.move_left() });
+            EditResult::Cont(false)
+        },
+        instr::MoveCursorInstr::Right => {
+            {
+                let mut dc = ctx.buf.start_delete();
+                vi_delete!(ctx with dc { dc.move_right() });
+            }
+            ctx.exclude_eol();
+            EditResult::Cont(false)
+        },
+        instr::MoveCursorInstr::Start => {
+            let mut dc = ctx.buf.start_delete();
+            dc.move_start();
+            match ctx.mode_state {
+                ModeState::Vi(ViMode::Delete, _)
+                | ModeState::Vi(ViMode::Change, _) => {
+                    dc.delete();
+                }
+                _ => {}
+            }
+            ctx.mode_state = next_vi_mode(ctx.mode_state);
+            EditResult::Cont(false)
+        },
+        instr::MoveCursorInstr::End => {
+            {
+                let mut dc = ctx.buf.start_delete();
+                vi_delete!(ctx with dc { dc.move_end(); false });
+            }
+            ctx.exclude_eol();
+            EditResult::Cont(false)
+        }
+    }
+}
+
 pub fn edit<'a>(ctx: &mut EditCtx<'a>) -> EditResult<Vec<u8>> {
     use self::EditResult::*;
 
@@ -183,9 +258,7 @@ pub fn edit<'a>(ctx: &mut EditCtx<'a>) -> EditResult<Vec<u8>> {
         Err(ParseError::Incomplete) => Cont(false),
         Ok(ParseSuccess(token, len)) => {
             let res = match instr::interpret_token(token, ctx.mode_state) {
-                instr::Instr::Done => {
-                    Halt(Ok(ctx.buf.drain()))
-                },
+                instr::Instr::Common(cinstr) => edit_common(ctx, cinstr),
                 instr::Instr::DoneOrEof => {
                     if ctx.buf.is_empty() {
                         Halt(Err(Error::EndOfFile))
@@ -238,62 +311,8 @@ pub fn edit<'a>(ctx: &mut EditCtx<'a>) -> EditResult<Vec<u8>> {
                     ctx.exclude_eol();
                     Cont(false)
                 }
-                instr::Instr::MoveCursorLeft => {
-                    let mut dc = ctx.buf.start_delete();
-                    vi_delete!(ctx with dc { dc.move_left() });
-                    Cont(false)
-                },
-                instr::Instr::MoveCursorRight => {
-                    {
-                        let mut dc = ctx.buf.start_delete();
-                        vi_delete!(ctx with dc { dc.move_right() });
-                    }
-                    ctx.exclude_eol();
-                    Cont(false)
-                },
-                instr::Instr::MoveCursorStart => {
-                    let mut dc = ctx.buf.start_delete();
-                    dc.move_start();
-                    match ctx.mode_state {
-                        ModeState::Vi(ViMode::Delete, _)
-                        | ModeState::Vi(ViMode::Change, _) => {
-                            dc.delete();
-                        }
-                        _ => {}
-                    }
-                    ctx.mode_state = next_vi_mode(ctx.mode_state);
-                    Cont(false)
-                },
-                instr::Instr::MoveCursorEnd => {
-                    {
-                        let mut dc = ctx.buf.start_delete();
-                        vi_delete!(ctx with dc { dc.move_end(); false });
-                    }
-                    ctx.exclude_eol();
-                    Cont(false)
-                },
-                instr::Instr::HistoryPrev => {
-                    vi_repeat!(ctx, {
-                        let end = ctx.history_cursor.incr();
-                        if end {
-                            ctx.buf.swap()
-                        }
-                        ctx.history_cursor.get().map(|s| ctx.buf.replace(s));
-                        end
-                    });
-                    Cont(false)
-                },
-                instr::Instr::HistoryNext => {
-                    vi_repeat!(ctx, {
-                        let end = ctx.history_cursor.decr();
-                        if end {
-                            ctx.buf.swap()
-                        }
-                        ctx.history_cursor.get().map(|s| ctx.buf.replace(s));
-                        end
-                    });
-                    Cont(false)
-                },
+                instr::Instr::MoveCursor(mcinstr) => edit_move_cursor(ctx, mcinstr),
+                instr::Instr::History(hinstr) => edit_history(ctx, hinstr),
                 instr::Instr::NormalMode => {
                     if let ModeState::Vi(ViMode::Insert, _) = ctx.mode_state {
                         // cursor moves left when leaving insert mode
@@ -529,13 +548,6 @@ pub fn edit<'a>(ctx: &mut EditCtx<'a>) -> EditResult<Vec<u8>> {
                     ctx.mode_state = ctx.mode_state.with_vi_mode(ViMode::Insert);
                     Cont(false)
                 }
-                instr::Instr::Noop => {
-                    Cont(false)
-                },
-                instr::Instr::Cancel => Halt(Err(Error::Cancel)),
-                instr::Instr::Clear => {
-                    Cont(true)
-                },
                 instr::Instr::InsertAtCursor(text) => {
                     ctx.buf.insert_chars_at_cursor(text);
                     Cont(false)
