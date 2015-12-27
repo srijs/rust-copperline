@@ -389,7 +389,7 @@ impl Buffer {
 }
 
 #[must_use]
-struct DeleteContext<'a> {
+pub struct DeleteContext<'a> {
     was_on_whitespace: bool,
     start_pos: usize,
     buf: &'a mut Buffer,

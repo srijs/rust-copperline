@@ -44,8 +44,8 @@ pub enum Encoding {
     Windows949
 }
 
-pub fn to_encoding_ref(enc: Encoding) -> EncodingRef {
-    match enc {
+pub fn to_encoding_ref(enc: &Encoding) -> EncodingRef {
+    match *enc {
         Encoding::Ascii => ASCII,
         Encoding::Big52003 => BIG5_2003,
         Encoding::EucJp => EUC_JP,

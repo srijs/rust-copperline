@@ -54,9 +54,7 @@ fn run_edit<'a>(mut ctx: EditCtx<'a>, io: &mut RunIO) -> Result<String, Error> {
         match edit(&mut ctx) {
             EditResult::Cont(line) => {
                 let bytes = try!(io.prompt(line));
-                for byte in bytes.iter() {
-                    ctx.fill(*byte);
-                }
+                ctx.fill(bytes);
             },
             EditResult::Halt(res) => { return res; }
         }

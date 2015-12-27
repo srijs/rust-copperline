@@ -34,9 +34,6 @@ mod term;
 use std::mem::drop;
 use std::os::unix::io::{RawFd, AsRawFd};
 
-use encoding::types::EncodingRef;
-use encoding::all::{ASCII, UTF_8};
-
 pub use enc::Encoding;
 pub use error::Error;
 use history::History;
@@ -47,8 +44,21 @@ use run::RunIO;
 
 pub struct Copperline {
     term: Term,
-    history: History,
-    mode: EditMode,
+    history: History
+}
+
+pub struct Config {
+    encoding: Encoding,
+    mode: EditMode
+}
+
+impl Config {
+    pub fn default() -> Config {
+        Config {
+            encoding: Encoding::Utf8,
+            mode: EditMode::Emacs
+        }
+    }
 }
 
 impl Copperline {
@@ -67,43 +77,27 @@ impl Copperline {
     pub fn new_from_raw_fds(ifd: RawFd, ofd: RawFd) -> Copperline {
         Copperline {
             term: Term::new(ifd, ofd),
-            history: History::new(),
-            // start in emacs mode by default
-            mode: EditMode::Emacs,
+            history: History::new()
         }
     }
 
-    /// Set the editing mode.
-    pub fn set_edit_mode(&mut self, mode: EditMode) {
-        self.mode = mode;
-    }
-
-    /// Reads a line from the input using the specified prompt.
-    fn read_line_with_enc(&mut self, prompt: &str, enc: EncodingRef) -> Result<String, Error> {
+    /// Reads a line from the input using the specified prompt and config.
+    fn read_line(&mut self, prompt: &str, cfg: &Config) -> Result<String, Error> {
+        let enc = enc::to_encoding_ref(&cfg.encoding);
         if Term::is_unsupported_term() || !self.term.is_a_tty() {
             return Err(Error::UnsupportedTerm);
         }
         let mut io = try!(self.term.acquire_io());
-        let ctx = EditCtx::new(prompt, &self.history, enc, self.mode);
+        let ctx = EditCtx::new(prompt, &self.history, enc, cfg.mode);
         let res = run::run(ctx, &mut io);
         drop(io);
         println!("");
         res
     }
 
-    /// Reads a line from the input using the specified prompt and encoding.
-    pub fn read_line(&mut self, prompt: &str, encoding: Encoding) -> Result<String, Error> {
-        self.read_line_with_enc(prompt, enc::to_encoding_ref(encoding))
-    }
-
-    /// Reads a ASCII encoded line from the input using the specified prompt.
-    pub fn read_line_ascii(&mut self, prompt: &str) -> Result<String, Error> {
-        self.read_line_with_enc(prompt, ASCII)
-    }
-
-    /// Reads a UTF-8 encoded line from the input using the specified prompt.
-    pub fn read_line_utf8(&mut self, prompt: &str) -> Result<String, Error> {
-        self.read_line_with_enc(prompt, UTF_8)
+    /// Reads a line from the input using the specified prompt and the default config.
+    pub fn read_line_default(&mut self, prompt: &str) -> Result<String, Error> {
+        self.read_line(prompt, &Config::default())
     }
 
     /// Returns the current length of the history.

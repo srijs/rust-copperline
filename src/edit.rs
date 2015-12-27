@@ -97,8 +97,8 @@ impl<'a> EditCtx<'a> {
         }
     }
 
-    pub fn fill(&mut self, byte: u8) {
-        self.seq.push(byte)
+    pub fn fill<I>(&mut self, it: I) where I: IntoIterator<Item=u8> {
+        self.seq.extend(it)
     }
 
     /// Ignore one past the end of the line in vi normal mode.
@@ -126,29 +126,6 @@ macro_rules! vi_repeat {
                             break;
                         }
                     },
-                }
-                $ctx.mode_state = ModeState::Vi(mode, 0);
-            }
-        }
-    };
-    ( $ctx:ident, $operation:expr, $step:expr ) => {
-        match $ctx.mode_state {
-            ModeState::Emacs => { $operation; }
-            ModeState::Vi(mode, count) => {
-                match count {
-                    0 => { $operation; }
-                    _ => {
-                        if $operation {
-                            for _ in 1..count {
-                                if !$step {
-                                    break;
-                                }
-                                if !$operation {
-                                    break;
-                                }
-                            }
-                        }
-                    }
                 }
                 $ctx.mode_state = ModeState::Vi(mode, 0);
             }
@@ -553,17 +530,11 @@ pub fn edit<'a>(ctx: &mut EditCtx<'a>) -> EditResult<Vec<u8>> {
                     Cont(false)
                 }
                 instr::Instr::ReplaceAtCursor(text) => {
-                    vi_repeat!(
-                        ctx,
-                        {
-                            ctx.buf.replace_chars_at_cursor(text.clone());
-                            true
-                        },
-                        {
-                            ctx.buf.move_right();
-                            ctx.buf.exclude_eol()
-                        }
-                    );
+                    vi_repeat!(ctx, {
+                        ctx.buf.replace_chars_at_cursor(text.clone());
+                        ctx.buf.move_right();
+                        ctx.buf.exclude_eol()
+                    });
                     ctx.mode_state = ctx.mode_state.with_vi_mode(ViMode::Normal);
                     Cont(false)
                 }
