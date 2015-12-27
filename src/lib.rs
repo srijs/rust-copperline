@@ -48,8 +48,8 @@ pub struct Copperline {
 }
 
 pub struct Config {
-    encoding: Encoding,
-    mode: EditMode
+    pub encoding: Encoding,
+    pub mode: EditMode
 }
 
 impl Config {
@@ -82,7 +82,7 @@ impl Copperline {
     }
 
     /// Reads a line from the input using the specified prompt and config.
-    fn read_line(&mut self, prompt: &str, cfg: &Config) -> Result<String, Error> {
+    pub fn read_line(&mut self, prompt: &str, cfg: &Config) -> Result<String, Error> {
         let enc = enc::to_encoding_ref(&cfg.encoding);
         if Term::is_unsupported_term() || !self.term.is_a_tty() {
             return Err(Error::UnsupportedTerm);
