@@ -584,15 +584,18 @@ fn move_to_end_of_word_nonkeywords() {
 #[test]
 fn move_to_end_of_word_whitespace() {
     let mut buf = Buffer::new();
+    assert_eq!(buf.char_pos(), 0);
     buf.insert_chars_at_cursor("here are".to_string());
-    let start_pos = buf.char_pos();
+    assert_eq!(buf.char_pos(), 8);
     buf.insert_chars_at_cursor("      som".to_string());
-    let end_pos = buf.char_pos();
+    assert_eq!(buf.char_pos(), 17);
     buf.insert_chars_at_cursor("e words".to_string());
-    buf.move_to_pos(start_pos);
+    assert_eq!(buf.char_pos(), 24);
+    buf.move_to_pos(8);
+    assert_eq!(buf.char_pos(), 8);
 
     buf.move_to_end_of_word();
-    assert_eq!(buf.char_pos(), end_pos);
+    assert_eq!(buf.char_pos(), 17);
 }
 
 #[test]
