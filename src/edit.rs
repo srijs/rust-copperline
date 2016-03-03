@@ -535,7 +535,7 @@ fn handle<'a>(ctx: &mut EditCtx<'a>, ins: instr::Instr) -> EditResult<bool> {
 pub fn edit<'a>(ctx: &mut EditCtx<'a>) -> EditResult<Vec<u8>> {
     let res = match parse(&ctx.seq, ctx.enc) {
         Err(ParseError::Error(len)) => {
-            for _ in (0..len) {
+            for _ in 0..len {
                 ctx.seq.remove(0);
             };
             EditResult::Cont(false)
@@ -544,7 +544,7 @@ pub fn edit<'a>(ctx: &mut EditCtx<'a>) -> EditResult<Vec<u8>> {
         Ok(ParseSuccess(token, len)) => {
             let ins = instr::interpret_token(token, ctx.mode_state);
             let res = handle(ctx, ins);
-            for _ in (0..len) {
+            for _ in 0..len {
                 ctx.seq.remove(0);
             };
             res
