@@ -12,5 +12,5 @@ keywords = ["readline", "linenoise", "command", "line", "editing"]
 libc = "0.1.10"
 nix = "0.4.0"
 unicode-width = "0.1.3"
+unicode-segmentation = "0.1.2"
 encoding = "0.2.32"
-strcursor = "0.1.0"

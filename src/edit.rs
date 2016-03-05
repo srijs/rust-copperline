@@ -517,12 +517,12 @@ fn handle<'a>(ctx: &mut EditCtx<'a>, ins: instr::Instr) -> EditResult<bool> {
             Cont(false)
         }
         instr::Instr::InsertAtCursor(text) => {
-            ctx.buf.insert_chars_at_cursor(text);
+            ctx.buf.insert_chars_at_cursor(text.as_str());
             Cont(false)
         }
         instr::Instr::ReplaceAtCursor(text) => {
             vi_repeat!(ctx, {
-                ctx.buf.replace_chars_at_cursor(text.clone());
+                ctx.buf.replace_chars_at_cursor(text.as_str());
                 ctx.buf.move_right();
                 ctx.buf.exclude_eol()
             });

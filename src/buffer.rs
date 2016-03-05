@@ -3,15 +3,41 @@ use std::ops::Deref;
 use std::cmp::Ordering;
 
 use unicode_width::UnicodeWidthStr;
+use unicode_segmentation::UnicodeSegmentation;
 
 use strcursor::StrCursor;
 
 use builder::Builder;
 
+#[derive(Debug,Clone,Copy,PartialEq,Eq,PartialOrd,Ord)]
+pub struct Position {
+    byte_pos: usize,
+    char_pos: usize
+}
+
+impl Position {
+
+    pub fn set_to_end_of_str(&mut self, buf: &str) {
+        self.byte_pos = buf.len();
+        self.char_pos = UnicodeWidthStr::width(buf);
+    }
+
+    pub fn increase_by_char(&mut self, c: char) {
+        self.byte_pos += c.len_utf8();
+        self.char_pos += 1;
+    }
+
+    pub fn decrease_by_str(&mut self, buf: &str) {
+        self.byte_pos -= buf.len();
+        self.char_pos -= UnicodeWidthStr::width(buf);
+    }
+
+}
+
 pub struct Buffer {
     front_buf: String,
     back_buf: String,
-    pos: usize
+    pos: Position
 }
 
 impl Buffer {
@@ -20,42 +46,44 @@ impl Buffer {
         Buffer {
             front_buf: String::new(),
             back_buf: String::new(),
-            pos: 0
+            pos: Position {
+                byte_pos: 0,
+                char_pos: 0
+            }
         }
     }
 
     pub fn swap(&mut self) {
         swap(&mut self.front_buf, &mut self.back_buf);
-        self.pos = self.front_buf.len();
+        self.pos.set_to_end_of_str(self.front_buf.as_str());
     }
 
     pub fn replace(&mut self, s: &str) {
         self.front_buf.clear();
         self.front_buf.extend(s.chars());
-        self.pos = s.len();
+        self.pos.set_to_end_of_str(s);
     }
 
     pub fn insert_char_at_cursor(&mut self, c: char) {
-        self.front_buf.insert(self.pos, c);
-        self.pos += c.len_utf8();
+        self.front_buf.insert(self.pos.byte_pos, c);
+        self.pos.increase_by_char(c);
     }
 
-    pub fn insert_chars_at_cursor(&mut self, s: String) {
+    pub fn insert_chars_at_cursor(&mut self, s: &str) {
         for c in s.chars() {
             self.insert_char_at_cursor(c);
         }
     }
 
-    pub fn replace_chars_at_cursor(&mut self, s: String) {
+    pub fn replace_chars_at_cursor(&mut self, s: &str) {
         self.delete_char_right_of_cursor();
-        let insert_len = s.chars().count();
         self.insert_chars_at_cursor(s);
-        self.pos -= insert_len;
+        self.pos.decrease_by_str(s);
     }
 
     pub fn delete_char_left_of_cursor(&mut self) -> bool {
         if self.move_left() {
-            self.front_buf.remove(self.pos);
+            self.front_buf.remove(self.pos.byte_pos);
             true
         }
         else {
@@ -64,20 +92,26 @@ impl Buffer {
     }
 
     pub fn delete_char_right_of_cursor(&mut self) -> bool {
-        if self.pos < self.front_buf.len() {
-            self.front_buf.remove(self.pos);
+        if self.pos.byte_pos < self.front_buf.len() {
+            self.front_buf.remove(self.pos.byte_pos);
             return true;
         } else {
             return false;
         }
     }
 
-    fn cursor(&self) -> StrCursor {
-        StrCursor::new_at_left_of_byte_pos(self.front_buf.deref(), self.pos)
-    }
-
-    fn prev_pos(&self) -> Option<usize> {
-        self.cursor().at_prev().map(|c| c.byte_pos())
+    fn prev_pos(&self) -> Option<Position> {
+        if self.pos.char_pos == 0 {
+            None
+        } else {
+            match UnicodeSegmentation::graphemes(self.front_buf.as_str(), true).nth(self.pos.char_pos - 1) {
+                Some(prev) => Some(Position {
+                    byte_pos: self.pos.byte_pos - prev.len(),
+                    char_pos: self.pos.char_pos - 1
+                }),
+                None => None
+            }
+        }
     }
 
     pub fn move_left(&mut self) -> bool {
@@ -90,8 +124,21 @@ impl Buffer {
         }
     }
 
-    fn next_pos(&self) -> Option<usize> {
-        self.cursor().at_next().map(|c| c.byte_pos())
+    fn next_pos(&self) -> Option<Position> {
+        match UnicodeSegmentation::graphemes(self.front_buf.as_str(), true).nth(self.pos.char_pos) {
+            Some(next) => Some(Position {
+                byte_pos: self.pos.byte_pos + next.len(),
+                char_pos: self.pos.char_pos + 1
+            }),
+            None => None
+        }
+    }
+
+    fn cp_after(&self) -> Option<char> {
+        match UnicodeSegmentation::graphemes(self.front_buf.as_str(), true).nth(self.pos.char_pos) {
+            Some(next) => next.chars().next(),
+            None => None
+        }
     }
 
     pub fn move_right(&mut self) -> bool {
@@ -112,7 +159,8 @@ impl Buffer {
     }
 
     pub fn move_start(&mut self) {
-        self.pos = 0;
+        self.pos.byte_pos = 0;
+        self.pos.char_pos = 0;
     }
 
     pub fn move_word(&mut self) -> bool {
@@ -138,7 +186,7 @@ impl Buffer {
             NonKeyword,
         };
 
-        let mut state = match self.cursor().cp_after() {
+        let mut state = match self.cp_after() {
             None => return false,
             Some(c) => match c {
                 c if c.is_whitespace() => State::Whitespace,
@@ -155,7 +203,7 @@ impl Buffer {
         };
 
         while advance(self) {
-            let c = match self.cursor().cp_after() {
+            let c = match self.cp_after() {
                 Some(c) => c,
                 _ => return false,
             };
@@ -185,7 +233,7 @@ impl Buffer {
     }
 
     pub fn move_end(&mut self) {
-        self.pos = self.front_buf.len();
+        self.pos.set_to_end_of_str(self.front_buf.as_str());
     }
 
     pub fn move_to_end_of_word(&mut self) -> bool {
@@ -232,7 +280,7 @@ impl Buffer {
 
             // XXX maybe use for self.cursor().slice_after().char_indicies()
             // XXX should we use self.cursor().after()?
-            let c = match self.cursor().cp_after() {
+            let c = match self.cp_after() {
                 Some(c) => c,
                 _ => return false,
             };
@@ -278,7 +326,7 @@ impl Buffer {
     ///
     /// If count characters are not found, the position will not be changed.
     pub fn move_to_char_right(&mut self, target_c: char, count: u32) -> bool {
-        let pos = self.char_pos();
+        let pos = self.pos;
         for _ in 0..count {
             if !self.move_to_char(target_c, ViMoveDir::Right) {
                 self.move_to_pos(pos);
@@ -292,7 +340,7 @@ impl Buffer {
     ///
     /// If count characters are not found, the position will not be changed.
     pub fn move_to_char_left(&mut self, target_c: char, count: u32) -> bool {
-        let pos = self.char_pos();
+        let pos = self.pos;
         for _ in 0..count {
             if !self.move_to_char(target_c, ViMoveDir::Left) {
                 self.move_to_pos(pos);
@@ -313,7 +361,7 @@ impl Buffer {
         };
 
         while advance(self) {
-            match self.cursor().cp_after() {
+            match self.cp_after() {
                 Some(c) if c == target_c => return true,
                 Some(_) => {}
                 None => return false,
@@ -323,11 +371,15 @@ impl Buffer {
     }
 
     fn char_pos(&self) -> usize {
-         UnicodeWidthStr::width(self.cursor().slice_before())
+        self.pos.char_pos
     }
 
-    fn move_to_pos(&mut self, pos: usize) -> bool {
-        if pos > self.front_buf.len() {
+    fn byte_pos(&self) -> usize {
+        self.pos.byte_pos
+    }
+
+    fn move_to_pos(&mut self, pos: Position) -> bool {
+        if pos.byte_pos > self.front_buf.len() {
             self.move_end();
             false
         }
@@ -337,20 +389,20 @@ impl Buffer {
         }
     }
 
-    fn delete_to_pos(&mut self, pos: usize) {
+    fn delete_to_pos(&mut self, pos: Position) {
         // the idea here is to start at the right most position and delete moving to the left until
         // the left most position
-        let (start_pos, end_pos) = match self.char_pos().cmp(&pos) {
+        let (start_pos, end_pos) = match self.pos.cmp(&pos) {
             // char_pos() is less than pos, start at pos and delete back to char_pos()
-            Ordering::Less => (pos, self.char_pos()),
+            Ordering::Less => (pos, self.pos),
             // char_pos() and pos are the same, nothing to do
             Ordering::Equal => return,
             // char_pos() is greater than pos, start at char_pos() and delete back to pos
-            Ordering::Greater => (self.char_pos(), pos),
+            Ordering::Greater => (self.pos, pos),
         };
 
         self.move_to_pos(start_pos);
-        while self.char_pos() > end_pos {
+        while self.pos > end_pos {
             self.delete_char_left_of_cursor();
         }
     }
@@ -376,10 +428,15 @@ impl Buffer {
         self.front_buf
     }
 
+    pub fn as_str(&self) -> &str {
+        self.front_buf.as_str()
+    }
+
     pub fn drain(&mut self) -> String {
         let mut s = String::new();
         swap(&mut s, &mut self.front_buf);
-        self.pos = 0;
+        self.pos.byte_pos = 0;
+        self.pos.char_pos = 0;
         s
     }
 
@@ -391,18 +448,18 @@ impl Buffer {
 #[must_use]
 pub struct DeleteContext<'a> {
     was_on_whitespace: bool,
-    start_pos: usize,
+    start_pos: Position,
     buf: &'a mut Buffer,
 }
 
 impl<'a> DeleteContext<'a> {
     fn new(b: &'a mut Buffer) -> Self {
         DeleteContext {
-            was_on_whitespace: match b.cursor().cp_after() {
+            was_on_whitespace: match b.cp_after() {
                 Some(c) if c.is_whitespace() => true,
                 _ => false,
             },
-            start_pos: b.char_pos(),
+            start_pos: b.pos,
             buf: b,
         }
     }
@@ -492,106 +549,101 @@ fn move_and_insert_cyrillic() {
 fn move_and_insert_cjk() {
     let mut buf = Buffer::new();
     buf.insert_char_at_cursor('䩖');
+    assert_eq!(buf.as_str(), "䩖");
     buf.move_left();
     buf.insert_char_at_cursor('䨻');
+    assert_eq!(buf.as_str(), "䨻䩖");
     buf.move_left();
     buf.move_right();
     buf.move_right();
     buf.insert_char_at_cursor('䦴');
+    assert_eq!(buf.as_str(), "䨻䩖䦴");
     buf.move_start();
     buf.insert_char_at_cursor('乫');
+    assert_eq!(buf.as_str(), "乫䨻䩖䦴");
     buf.move_end();
     buf.insert_char_at_cursor('憛');
+    assert_eq!(buf.as_str(), "乫䨻䩖䦴憛");
     buf.move_left();
     buf.move_left();
     buf.delete_char_left_of_cursor();
-    assert_eq!(buf.to_string(), "乫䨻䦴憛".to_string());
+    assert_eq!(buf.as_str(), "乫䨻䦴憛");
 }
 
 #[test]
 fn move_to_pos() {
     let mut buf = Buffer::new();
-    buf.insert_chars_at_cursor("pos".to_string());
-    let pos = buf.char_pos();
-    buf.insert_chars_at_cursor("pos".to_string());
+    buf.insert_chars_at_cursor("pos");
+    let pos = buf.pos;
+    buf.insert_chars_at_cursor("pos");
 
-    assert!(buf.char_pos() != pos);
+    assert!(buf.pos != pos);
     buf.move_to_pos(pos);
-    assert_eq!(buf.char_pos(), pos);
-}
-
-#[test]
-fn move_to_pos_past_end() {
-    let mut buf = Buffer::new();
-    buf.insert_chars_at_cursor("pos".to_string());
-    let end_pos = buf.char_pos();
-
-    assert_eq!(buf.char_pos(), end_pos);
-    buf.move_to_pos(10_000);
-    assert_eq!(buf.char_pos(), end_pos);
+    assert_eq!(buf.pos, pos);
 }
 
 #[test]
 fn move_to_end_of_word_simple() {
     let mut buf = Buffer::new();
-    buf.insert_chars_at_cursor("here are".to_string());
-    let start_pos = buf.char_pos();
-    buf.insert_chars_at_cursor(" som".to_string());
-    let end_pos = buf.char_pos();
-    buf.insert_chars_at_cursor("e words".to_string());
+    buf.insert_chars_at_cursor("here are");
+    let start_pos = buf.pos;
+    buf.insert_chars_at_cursor(" som");
+    let end_pos = buf.pos;
+    buf.insert_chars_at_cursor("e words");
     buf.move_to_pos(start_pos);
 
     buf.move_to_end_of_word();
-    assert_eq!(buf.char_pos(), end_pos);
+    assert_eq!(buf.pos, end_pos);
 }
 
 #[test]
 fn move_to_end_of_word_comma() {
     let mut buf = Buffer::new();
-    buf.insert_chars_at_cursor("here ar".to_string());
-    let start_pos = buf.char_pos();
+    buf.insert_chars_at_cursor("here ar");
+    let start_pos = buf.pos;
     buf.insert_char_at_cursor('e');
-    let end_pos1 = buf.char_pos();
-    buf.insert_chars_at_cursor(", som".to_string());
-    let end_pos2 = buf.char_pos();
-    buf.insert_chars_at_cursor("e words".to_string());
+    let end_pos1 = buf.pos;
+    buf.insert_chars_at_cursor(", som");
+    let end_pos2 = buf.pos;
+    buf.insert_chars_at_cursor("e words");
     buf.move_to_pos(start_pos);
 
     buf.move_to_end_of_word();
-    assert_eq!(buf.char_pos(), end_pos1);
+    assert_eq!(buf.pos, end_pos1);
     buf.move_to_end_of_word();
-    assert_eq!(buf.char_pos(), end_pos2);
+    assert_eq!(buf.pos, end_pos2);
 }
 
 #[test]
 fn move_to_end_of_word_nonkeywords() {
     let mut buf = Buffer::new();
-    buf.insert_chars_at_cursor("here ar".to_string());
-    let start_pos = buf.char_pos();
-    buf.insert_chars_at_cursor("e,,,".to_string());
-    let end_pos1 = buf.char_pos();
-    buf.insert_chars_at_cursor(",som".to_string());
-    let end_pos2 = buf.char_pos();
-    buf.insert_chars_at_cursor("e words".to_string());
+    buf.insert_chars_at_cursor("here ar");
+    let start_pos = buf.pos;
+    buf.insert_chars_at_cursor("e,,,");
+    let end_pos1 = buf.pos;
+    buf.insert_chars_at_cursor(",som");
+    let end_pos2 = buf.pos;
+    buf.insert_chars_at_cursor("e words");
     buf.move_to_pos(start_pos);
 
     buf.move_to_end_of_word();
-    assert_eq!(buf.char_pos(), end_pos1);
+    assert_eq!(buf.pos, end_pos1);
     buf.move_to_end_of_word();
-    assert_eq!(buf.char_pos(), end_pos2);
+    assert_eq!(buf.pos, end_pos2);
 }
 
 #[test]
 fn move_to_end_of_word_whitespace() {
     let mut buf = Buffer::new();
     assert_eq!(buf.char_pos(), 0);
-    buf.insert_chars_at_cursor("here are".to_string());
+    buf.insert_chars_at_cursor("here are");
+    let start_pos = buf.pos;
     assert_eq!(buf.char_pos(), 8);
-    buf.insert_chars_at_cursor("      som".to_string());
+    buf.insert_chars_at_cursor("      som");
     assert_eq!(buf.char_pos(), 17);
-    buf.insert_chars_at_cursor("e words".to_string());
+    buf.insert_chars_at_cursor("e words");
     assert_eq!(buf.char_pos(), 24);
-    buf.move_to_pos(8);
+    buf.move_to_pos(start_pos);
     assert_eq!(buf.char_pos(), 8);
 
     buf.move_to_end_of_word();
@@ -601,41 +653,41 @@ fn move_to_end_of_word_whitespace() {
 #[test]
 fn move_to_end_of_word_whitespace_nonkeywords() {
     let mut buf = Buffer::new();
-    buf.insert_chars_at_cursor("here ar".to_string());
-    let start_pos = buf.char_pos();
-    buf.insert_chars_at_cursor("e   ,,,".to_string());
-    let end_pos1 = buf.char_pos();
-    buf.insert_chars_at_cursor(", som".to_string());
-    let end_pos2 = buf.char_pos();
-    buf.insert_chars_at_cursor("e words".to_string());
+    buf.insert_chars_at_cursor("here ar");
+    let start_pos = buf.pos;
+    buf.insert_chars_at_cursor("e   ,,,");
+    let end_pos1 = buf.pos;
+    buf.insert_chars_at_cursor(", som");
+    let end_pos2 = buf.pos;
+    buf.insert_chars_at_cursor("e words");
     buf.move_to_pos(start_pos);
 
     buf.move_to_end_of_word();
-    assert_eq!(buf.char_pos(), end_pos1);
+    assert_eq!(buf.pos, end_pos1);
     buf.move_to_end_of_word();
-    assert_eq!(buf.char_pos(), end_pos2);
+    assert_eq!(buf.pos, end_pos2);
 }
 
 #[test]
 fn replace_chars_at_cursor() {
     let mut buf = Buffer::new();
-    buf.insert_chars_at_cursor("text".to_string());
-    let pos = buf.char_pos();
-    buf.insert_chars_at_cursor(" string".to_string());
-    for _ in 0..buf.char_pos() - pos {
+    buf.insert_chars_at_cursor("text");
+    let pos = buf.pos;
+    buf.insert_chars_at_cursor(" string");
+    for _ in 0..buf.char_pos() - pos.char_pos {
         buf.move_left();
     }
 
     // replace should not move the cursor
-    assert_eq!(buf.char_pos(), pos);
-    buf.replace_chars_at_cursor("_".to_string());
-    assert_eq!(buf.to_string(), "text_string".to_string());
+    assert_eq!(buf.pos, pos);
+    buf.replace_chars_at_cursor("_");
+    assert_eq!(buf.to_string(), "text_string");
 }
 
 #[test]
 fn exclude_eol() {
     let mut buf = Buffer::new();
-    buf.insert_chars_at_cursor("text".to_string());
+    buf.insert_chars_at_cursor("text");
     let end = buf.char_pos();
     buf.move_left();
 
@@ -658,109 +710,109 @@ fn exclude_eol() {
 #[test]
 fn move_to_end_of_word_ws_simple() {
     let mut buf = Buffer::new();
-    buf.insert_chars_at_cursor("here are".to_string());
-    let start_pos = buf.char_pos();
-    buf.insert_chars_at_cursor(" som".to_string());
-    let end_pos = buf.char_pos();
-    buf.insert_chars_at_cursor("e words".to_string());
+    buf.insert_chars_at_cursor("here are");
+    let start_pos = buf.pos;
+    buf.insert_chars_at_cursor(" som");
+    let end_pos = buf.pos;
+    buf.insert_chars_at_cursor("e words");
     buf.move_to_pos(start_pos);
 
     buf.move_to_end_of_word_ws();
-    assert_eq!(buf.char_pos(), end_pos);
+    assert_eq!(buf.pos, end_pos);
 }
 
 #[test]
 fn move_to_end_of_word_ws_comma() {
     let mut buf = Buffer::new();
-    buf.insert_chars_at_cursor("here ar".to_string());
-    let start_pos = buf.char_pos();
+    buf.insert_chars_at_cursor("here ar");
+    let start_pos = buf.pos;
     buf.insert_char_at_cursor('e');
-    let end_pos1 = buf.char_pos();
-    buf.insert_chars_at_cursor(", som".to_string());
-    let end_pos2 = buf.char_pos();
-    buf.insert_chars_at_cursor("e words".to_string());
+    let end_pos1 = buf.pos;
+    buf.insert_chars_at_cursor(", som");
+    let end_pos2 = buf.pos;
+    buf.insert_chars_at_cursor("e words");
     buf.move_to_pos(start_pos);
 
     buf.move_to_end_of_word_ws();
-    assert_eq!(buf.char_pos(), end_pos1);
+    assert_eq!(buf.pos, end_pos1);
     buf.move_to_end_of_word_ws();
-    assert_eq!(buf.char_pos(), end_pos2);
+    assert_eq!(buf.pos, end_pos2);
 }
 
 #[test]
 fn move_to_end_of_word_ws_nonkeywords() {
     let mut buf = Buffer::new();
-    buf.insert_chars_at_cursor("here ar".to_string());
-    let start_pos = buf.char_pos();
-    buf.insert_chars_at_cursor("e,,,,som".to_string());
-    let end_pos = buf.char_pos();
-    buf.insert_chars_at_cursor("e words".to_string());
+    buf.insert_chars_at_cursor("here ar");
+    let start_pos = buf.pos;
+    buf.insert_chars_at_cursor("e,,,,som");
+    let end_pos = buf.pos;
+    buf.insert_chars_at_cursor("e words");
     buf.move_to_pos(start_pos);
 
     buf.move_to_end_of_word_ws();
-    assert_eq!(buf.char_pos(), end_pos);
+    assert_eq!(buf.pos, end_pos);
 }
 
 #[test]
 fn move_to_end_of_word_ws_whitespace() {
     let mut buf = Buffer::new();
-    buf.insert_chars_at_cursor("here are".to_string());
-    let start_pos = buf.char_pos();
-    buf.insert_chars_at_cursor("      som".to_string());
-    let end_pos = buf.char_pos();
-    buf.insert_chars_at_cursor("e words".to_string());
+    buf.insert_chars_at_cursor("here are");
+    let start_pos = buf.pos;
+    buf.insert_chars_at_cursor("      som");
+    let end_pos = buf.pos;
+    buf.insert_chars_at_cursor("e words");
     buf.move_to_pos(start_pos);
 
     buf.move_to_end_of_word_ws();
-    assert_eq!(buf.char_pos(), end_pos);
+    assert_eq!(buf.pos, end_pos);
 }
 
 #[test]
 fn move_to_end_of_word_ws_whitespace_nonkeywords() {
     let mut buf = Buffer::new();
-    buf.insert_chars_at_cursor("here ar".to_string());
-    let start_pos = buf.char_pos();
-    buf.insert_chars_at_cursor("e   ,,,".to_string());
-    let end_pos1 = buf.char_pos();
-    buf.insert_chars_at_cursor(", som".to_string());
-    let end_pos2 = buf.char_pos();
-    buf.insert_chars_at_cursor("e words".to_string());
+    buf.insert_chars_at_cursor("here ar");
+    let start_pos = buf.pos;
+    buf.insert_chars_at_cursor("e   ,,,");
+    let end_pos1 = buf.pos;
+    buf.insert_chars_at_cursor(", som");
+    let end_pos2 = buf.pos;
+    buf.insert_chars_at_cursor("e words");
     buf.move_to_pos(start_pos);
 
     buf.move_to_end_of_word_ws();
-    assert_eq!(buf.char_pos(), end_pos1);
+    assert_eq!(buf.pos, end_pos1);
     buf.move_to_end_of_word_ws();
-    assert_eq!(buf.char_pos(), end_pos2);
+    assert_eq!(buf.pos, end_pos2);
 }
 
 #[test]
 fn move_word_simple() {
     let mut buf = Buffer::new();
-    buf.insert_chars_at_cursor("here ".to_string());
-    let pos1 = buf.char_pos();
-    buf.insert_chars_at_cursor("are ".to_string());
-    let pos2 = buf.char_pos();
-    buf.insert_chars_at_cursor("some words".to_string());
+    buf.insert_chars_at_cursor("here ");
+    let pos1 = buf.pos;
+    buf.insert_chars_at_cursor("are ");
+    let pos2 = buf.pos;
+    buf.insert_chars_at_cursor("some words");
     buf.move_start();
 
     buf.move_word();
-    assert_eq!(buf.char_pos(), pos1);
+    assert_eq!(buf.pos, pos1);
     buf.move_word();
-    assert_eq!(buf.char_pos(), pos2);
+    assert_eq!(buf.pos, pos2);
 
     buf.move_start();
     buf.move_word_ws();
-    assert_eq!(buf.char_pos(), pos1);
+    assert_eq!(buf.pos, pos1);
     buf.move_word_ws();
-    assert_eq!(buf.char_pos(), pos2);
+    assert_eq!(buf.pos, pos2);
 }
 
 #[test]
 fn move_word_whitespace() {
     let mut buf = Buffer::new();
-    buf.insert_chars_at_cursor("   ".to_string());
+    buf.insert_chars_at_cursor("   ");
     let pos1 = buf.char_pos();
-    buf.insert_chars_at_cursor("word".to_string());
+    buf.insert_chars_at_cursor("word");
     let pos2 = buf.char_pos();
     buf.move_start();
 
@@ -779,9 +831,9 @@ fn move_word_whitespace() {
 #[test]
 fn move_word_nonkeywords() {
     let mut buf = Buffer::new();
-    buf.insert_chars_at_cursor("...".to_string());
+    buf.insert_chars_at_cursor("...");
     let pos1 = buf.char_pos();
-    buf.insert_chars_at_cursor("word".to_string());
+    buf.insert_chars_at_cursor("word");
     let pos2 = buf.char_pos();
     buf.move_start();
 
@@ -798,11 +850,11 @@ fn move_word_nonkeywords() {
 #[test]
 fn move_word_whitespace_nonkeywords() {
     let mut buf = Buffer::new();
-    buf.insert_chars_at_cursor("...   ".to_string());
+    buf.insert_chars_at_cursor("...   ");
     let pos1 = buf.char_pos();
-    buf.insert_chars_at_cursor("...".to_string());
+    buf.insert_chars_at_cursor("...");
     let pos2 = buf.char_pos();
-    buf.insert_chars_at_cursor("word".to_string());
+    buf.insert_chars_at_cursor("word");
     let pos3 = buf.char_pos();
     buf.move_start();
 
@@ -821,15 +873,15 @@ fn move_word_whitespace_nonkeywords() {
 #[test]
 fn move_word_and_back() {
     let mut buf = Buffer::new();
-    buf.insert_chars_at_cursor("here ".to_string());
+    buf.insert_chars_at_cursor("here ");
     let pos1 = buf.char_pos();
-    buf.insert_chars_at_cursor("are ".to_string());
+    buf.insert_chars_at_cursor("are ");
     let pos2 = buf.char_pos();
-    buf.insert_chars_at_cursor("some".to_string());
+    buf.insert_chars_at_cursor("some");
     let pos3 = buf.char_pos();
-    buf.insert_chars_at_cursor("... ".to_string());
+    buf.insert_chars_at_cursor("... ");
     let pos4 = buf.char_pos();
-    buf.insert_chars_at_cursor("words".to_string());
+    buf.insert_chars_at_cursor("words");
     let pos5 = buf.char_pos();
 
     // make sure move_word() and move_word_back() are reflections of eachother
@@ -880,11 +932,11 @@ fn move_word_and_back() {
 #[test]
 fn move_to_char() {
     let mut buf = Buffer::new();
-    buf.insert_chars_at_cursor("words".to_string());
+    buf.insert_chars_at_cursor("words");
     let pos1 = buf.char_pos();
-    buf.insert_chars_at_cursor(" wor".to_string());
+    buf.insert_chars_at_cursor(" wor");
     let d_pos = buf.char_pos();
-    buf.insert_chars_at_cursor("ds".to_string());
+    buf.insert_chars_at_cursor("ds");
 
     buf.move_start();
     assert!(buf.move_to_char_right(' ', 1));
@@ -904,7 +956,7 @@ fn move_to_char() {
 fn move_and_delete1() {
     // test a simple move
     let mut buf = Buffer::new();
-    buf.insert_chars_at_cursor("words words words".to_string());
+    buf.insert_chars_at_cursor("words words words");
     buf.move_start();
     {
         let mut dc = buf.start_delete();
@@ -931,7 +983,7 @@ fn move_and_delete2() {
 fn move_and_delete3() {
     // test deleting from the end to the beginning
     let mut buf = Buffer::new();
-    buf.insert_chars_at_cursor("words words words".to_string());
+    buf.insert_chars_at_cursor("words words words");
     {
         let mut dc = buf.start_delete();
         dc.move_start();

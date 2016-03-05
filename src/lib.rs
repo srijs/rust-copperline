@@ -17,6 +17,7 @@
 extern crate libc;
 extern crate nix;
 extern crate unicode_width;
+extern crate unicode_segmentation;
 extern crate encoding;
 extern crate strcursor;
 
