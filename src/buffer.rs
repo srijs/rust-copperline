@@ -5,8 +5,6 @@ use std::cmp::Ordering;
 use unicode_width::UnicodeWidthStr;
 use unicode_segmentation::UnicodeSegmentation;
 
-use strcursor::StrCursor;
-
 use builder::Builder;
 
 #[derive(Debug,Clone,Copy,PartialEq,Eq,PartialOrd,Ord)]
