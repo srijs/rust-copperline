@@ -100,6 +100,7 @@ fn emacs_mode(token: parser::Token) -> Instr {
         parser::Token::CtrlE        => Instr::MoveCursor(MoveCursorInstr::End),
         parser::Token::EscBracketF  => Instr::MoveCursor(MoveCursorInstr::End),
         parser::Token::Text(text)   => Instr::InsertAtCursor(text),
+        parser::Token::CtrlJ        => Instr::Common(CommonInstr::Done),
         parser::Token::CtrlC        => Instr::Common(CommonInstr::Cancel),
         parser::Token::CtrlL        => Instr::Common(CommonInstr::Clear),
         _                           => Instr::Common(CommonInstr::Noop)
@@ -109,6 +110,7 @@ fn emacs_mode(token: parser::Token) -> Instr {
 fn vi_common(token: &parser::Token) -> Instr {
     match *token {
         parser::Token::Enter        => Instr::Common(CommonInstr::Done),
+        parser::Token::CtrlJ        => Instr::Common(CommonInstr::Done),
         parser::Token::CtrlD        => Instr::DoneOrEof,
         parser::Token::Esc          => Instr::NormalMode,
         parser::Token::Backspace    => Instr::DeleteCharLeftOfCursor,
@@ -131,6 +133,7 @@ fn vi_common(token: &parser::Token) -> Instr {
 fn vi_insert_mode(token: parser::Token) -> Instr {
     match token {
         parser::Token::Text(text)   => Instr::InsertAtCursor(text),
+        parser::Token::CtrlH        => Instr::DeleteCharLeftOfCursor,
         _                           => vi_common(&token),
     }
 }
