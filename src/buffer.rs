@@ -14,6 +14,17 @@ pub struct Position {
 }
 
 impl Position {
+    pub fn new() -> Position {
+        Position {
+            byte_pos: 0,
+            char_pos: 0
+        }
+    }
+
+    pub fn reset(&mut self) {
+        self.byte_pos = 0;
+        self.char_pos = 0;
+    }
 
     pub fn set_to_end_of_str(&mut self, buf: &str) {
         self.byte_pos = buf.len();
@@ -39,15 +50,11 @@ pub struct Buffer {
 }
 
 impl Buffer {
-
     pub fn new() -> Buffer {
         Buffer {
             front_buf: String::new(),
             back_buf: String::new(),
-            pos: Position {
-                byte_pos: 0,
-                char_pos: 0
-            }
+            pos: Position::new()
         }
     }
 
@@ -157,8 +164,7 @@ impl Buffer {
     }
 
     pub fn move_start(&mut self) {
-        self.pos.byte_pos = 0;
-        self.pos.char_pos = 0;
+        self.pos.reset();
     }
 
     pub fn move_word(&mut self) -> bool {
@@ -193,14 +199,7 @@ impl Buffer {
             },
         };
 
-        let advance = |buf: &mut Self| {
-            match direction {
-                ViMoveDir::Right => buf.move_right(),
-                ViMoveDir::Left => buf.move_left(),
-            }
-        };
-
-        while advance(self) {
+        while direction.advance(self) {
             let c = match self.cp_after() {
                 Some(c) => c,
                 _ => return false,
@@ -260,21 +259,7 @@ impl Buffer {
 
         let mut state = State::Whitespace;
 
-        let advance = |buf: &mut Self| {
-            match direction {
-                ViMoveDir::Right => buf.move_right(),
-                ViMoveDir::Left => buf.move_left(),
-            }
-        };
-
-        let go_back = |buf: &mut Self| {
-            match direction {
-                ViMoveDir::Right => buf.move_left(),
-                ViMoveDir::Left => buf.move_right(),
-            }
-        };
-
-        while advance(self) {
+        while direction.advance(self) {
 
             // XXX maybe use for self.cursor().slice_after().char_indicies()
             // XXX should we use self.cursor().after()?
@@ -303,15 +288,15 @@ impl Buffer {
                     }
                 },
                 State::EndOnWord if !is_vi_keyword(c) => {
-                    go_back(self);
+                    direction.go_back(self);
                     return true;
                 },
                 State::EndOnWhitespace if c.is_whitespace() => {
-                    go_back(self);
+                    direction.go_back(self);
                     return true;
                 },
                 State::EndOnOther if c.is_whitespace() || is_vi_keyword(c) => {
-                    go_back(self);
+                    direction.go_back(self);
                     return true;
                 },
                 _ => {},
@@ -351,14 +336,7 @@ impl Buffer {
     fn move_to_char(&mut self, target_c: char, direction: ViMoveDir) -> bool {
         // XXX this code is very similar to code in move_word_end(), should be replaced with some
         // sort of iterator over the internal buffer starting at the current position
-        let advance = |buf: &mut Self| {
-            match direction {
-                ViMoveDir::Right => buf.move_right(),
-                ViMoveDir::Left => buf.move_left(),
-            }
-        };
-
-        while advance(self) {
+        while direction.advance(self) {
             match self.cp_after() {
                 Some(c) if c == target_c => return true,
                 Some(_) => {}
@@ -433,8 +411,7 @@ impl Buffer {
     pub fn drain(&mut self) -> String {
         let mut s = String::new();
         swap(&mut s, &mut self.front_buf);
-        self.pos.byte_pos = 0;
-        self.pos.char_pos = 0;
+        self.pos.reset();
         s
     }
 
@@ -497,6 +474,21 @@ enum ViMoveDir {
     Right,
 }
 
+impl ViMoveDir {
+    pub fn advance(&self, buf: &mut Buffer) -> bool {
+        match *self {
+            ViMoveDir::Right => buf.move_right(),
+            ViMoveDir::Left => buf.move_left(),
+        }
+    }
+
+    pub fn go_back(&self, buf: &mut Buffer) -> bool {
+        match *self {
+            ViMoveDir::Right => buf.move_left(),
+            ViMoveDir::Left => buf.move_right(),
+        }
+    }
+}
 
 /// All alphanumeric characters and _ are considered valid for keywords in vi by default.
 fn is_vi_keyword(c: char) -> bool {
